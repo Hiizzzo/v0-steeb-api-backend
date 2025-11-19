@@ -9,7 +9,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(echo:*)",
-      "Bash(vercel.json)"
+      "Bash(vercel.json)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
