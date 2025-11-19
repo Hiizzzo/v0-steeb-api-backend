@@ -7,7 +7,9 @@
       "Bash(git init:*)",
       "Bash(git rm:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(echo:*)",
+      "Bash(vercel.json)"
     ],
     "deny": [],
     "ask": []
