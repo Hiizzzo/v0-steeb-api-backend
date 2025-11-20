@@ -28,7 +28,7 @@ const CONFIG = {
   MAX_RETRIES: 3,
   RETRY_DELAY: 1000,
   CACHE_TTL: 5 * 60 * 1000, // 5 minutos
-  AI_TIMEOUT: 30000, // 30 segundos
+  AI_TIMEOUT: 8000, // REDUCIDO a 8 segundos para velocidad
 }
 
 // 💾 Cache en memoria simple para usuarios frecuentes
@@ -164,7 +164,7 @@ class AIService {
       systemPrompt,
       {
         temperature: 0.7,
-        maxTokens: 500,
+        maxTokens: 100, // REDUCIDO para velocidad
         timeout: CONFIG.AI_TIMEOUT
       }
     )
@@ -173,21 +173,7 @@ class AIService {
 
 // 🎯 System prompts dinámicos
 const getSystemPrompt = (userMessagesCount: number): string => {
-  const basePrompt = `
-    Eres STEEB, un coach motivador energético, divertido y sin toxicidad.
-    Tu objetivo es ayudar al usuario a vencer la procrastinación.
-
-    Personalidad:
-    - Tono energético y humor ligero.
-    - Cercano como un amigo.
-    - Estilo divertido pero directo.
-    - JAMÁS seas regañón o negativo.
-
-    Instrucciones:
-    - Responde de forma breve y motivadora.
-    - Usa emojis si encaja con el tono.
-    - Enfócate en la acción inmediata.
-  `
+  const basePrompt = "Eres STEEB, coach motivacional para vencer procrastinación. Tono energético, breve, con emojis."
 
   const contextualMessages = [
     "¡Nuevo día, nuevas oportunidades! 🔥",
@@ -198,15 +184,12 @@ const getSystemPrompt = (userMessagesCount: number): string => {
   ]
 
   if (userMessagesCount === 0) {
-    return `${basePrompt}\n\nEs el primer mensaje del usuario. Dale una bienvenida increíblemente motivadora.`
-  } else if (userMessagesCount > 50) {
-    return `${basePrompt}\n\nEl usuario ya ha conversado mucho contigo. Recuérdale su progreso y celebra su constancia.`
+    return basePrompt + " Bienvenida motivadora."
   } else if (userMessagesCount > 80) {
-    return `${basePrompt}\n\n¡El usuario está cerca del límite! Motívalo a terminar fuerte.`
+    return basePrompt + " Cerca del límite, termina fuerte!"
   }
 
-  const contextualTip = contextualMessages[userMessagesCount % contextualMessages.length]
-  return `${basePrompt}\n\nMensaje contextual adicional: ${contextualTip}`
+  return basePrompt
 }
 
 // 📊 Response formatter

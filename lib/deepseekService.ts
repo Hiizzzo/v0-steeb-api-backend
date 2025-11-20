@@ -113,8 +113,8 @@ class DeepSeekService {
   ): Promise<string> {
     const {
       temperature = 0.7,
-      maxTokens = 500,
-      timeout = 30000
+      maxTokens = 150, // REDUCIDO de 500 a 150 para velocidad
+      timeout = 10000  // REDUCIDO de 30000 a 10000 para velocidad
     } = options || {}
 
     this.log("INFO", "Starting DeepSeek API request", {
@@ -231,7 +231,7 @@ class DeepSeekService {
         throw error
       }
 
-    }, "DeepSeek generateResponse", 3, 1000)
+    }, "DeepSeek generateResponse", 1, 500) // REDUCIDO para velocidad: 1 retry, 500ms delay
   }
 
   // Método para saludcheck del servicio
