@@ -51,6 +51,12 @@ class DeepSeekService {
 
     this.apiKey = process.env.DEEPSEEK_API_KEY
     this.baseURL = "https://api.deepseek.com"
+
+    this.log("INFO", "DeepSeekService initialized", {
+      baseURL: this.baseURL,
+      hasApiKey: !!this.apiKey,
+      apiKeyLength: this.apiKey ? this.apiKey.length : 0
+    })
   }
 
   private log(level: "INFO" | "WARN" | "ERROR", message: string, data?: any) {
@@ -115,7 +121,9 @@ class DeepSeekService {
       model: "deepseek-chat",
       temperature,
       maxTokens,
-      messageLength: userMessage.length
+      messageLength: userMessage.length,
+      baseURL: this.baseURL,
+      endpoint: `${this.baseURL}/v1/chat/completions`
     })
 
     return this.retryOperation(async () => {
@@ -140,7 +148,18 @@ class DeepSeekService {
       const timeoutId = setTimeout(() => controller.abort(), timeout)
 
       try {
-        const response = await fetch(`${this.baseURL}/v1/chat/completions`, {
+        const url = `${this.baseURL}/v1/chat/completions`
+        this.log("INFO", "Making fetch request to DeepSeek API", {
+          url,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.apiKey.substring(0, 10)}...`
+          },
+          requestBodySize: JSON.stringify(requestBody).length
+        })
+
+        const response = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -148,6 +167,13 @@ class DeepSeekService {
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal
+        })
+
+        this.log("INFO", "DeepSeek API response received", {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
         })
 
         clearTimeout(timeoutId)
