@@ -1,5 +1,4 @@
-import { createOpenAI } from "@ai-sdk/openai"
-import { generateText } from "ai"
+import { DeepSeekService } from "../../../lib/deepseekService"
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -151,38 +150,24 @@ class SupabaseService {
   }
 }
 
-// 🤖 Servicio de IA
+// 🤖 Servicio de IA - Usando DeepSeek nativo
 class AIService {
-  private client: ReturnType<typeof createOpenAI>
+  private deepseekService: DeepSeekService
 
   constructor() {
-    if (!process.env.DEEPSEEK_API_KEY) {
-      throw new Error("Missing DeepSeek API key")
-    }
-
-    this.client = createOpenAI({
-      baseURL: "https://api.deepseek.com",
-      apiKey: process.env.DEEPSEEK_API_KEY,
-    })
+    this.deepseekService = new DeepSeekService()
   }
 
   async generateResponse(message: string, systemPrompt: string): Promise<string> {
-    return retryOperation(async () => {
-      const { text } = await Promise.race([
-        generateText({
-          model: this.client("deepseek-chat"),
-          system: systemPrompt,
-          prompt: message,
-          temperature: 0.7,
-          maxTokens: 500,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("AI request timeout")), CONFIG.AI_TIMEOUT)
-        )
-      ])
-
-      return text.trim()
-    }, "generateResponse")
+    return this.deepseekService.generateResponse(
+      message,
+      systemPrompt,
+      {
+        temperature: 0.7,
+        maxTokens: 500,
+        timeout: CONFIG.AI_TIMEOUT
+      }
+    )
   }
 }
 
