@@ -1,0 +1,17 @@
+[
+  {
+    "id": "dark-mode-premium",
+    "title": "Dark mode",
+    "description": "Desbloquea el tema oscuro oficial y acceso diario al juego Shiny de STEEB.",
+    "price": 1,
+    "currency": "ARS",
+    "features": [
+      "Tema dark permanente en todos los dispositivos",
+      "1 intento diario al juego Shiny (primer intento incluido al comprar)",
+      "Acceso prioritario a nuevas funciones premium",
+      "Pagos con tarjetas de crédito y débito vía Mercado Pago"
+    ],
+    "trialDays": 0,
+    "mostPopular": true
+  }
+]
