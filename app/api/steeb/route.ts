@@ -3,6 +3,25 @@ import { generateText } from "ai"
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 
+// 🌐 CORS Headers
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
+
+// 🔧 Helper para respuestas JSON con CORS
+function jsonWithCors(body: any, init?: ResponseInit): NextResponse {
+  const headers = new Headers(init?.headers)
+
+  // Agregar headers CORS
+  Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+    headers.set(key, value)
+  })
+
+  return NextResponse.json(body, { ...init, headers })
+}
+
 // 🚀 Configuración y constantes
 const CONFIG = {
   MESSAGE_LIMIT: 100,
@@ -254,6 +273,11 @@ const validateRequest = (body: any): { message: string; userId?: string } => {
   return { message: sanitizeInput(message), userId }
 }
 
+// 🌐 Handler para preflight requests (CORS)
+export async function OPTIONS() {
+  return jsonWithCors({}, { status: 200 })
+}
+
 // 🎯 Main API handler
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
@@ -263,7 +287,7 @@ export async function POST(req: NextRequest) {
   try {
     // 🔐 Validar configuración
     if (!process.env.DEEPSEEK_API_KEY || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
+      return jsonWithCors(
         { success: false, error: "Server configuration error: Missing API Keys" },
         { status: 500 }
       )
@@ -304,7 +328,7 @@ export async function POST(req: NextRequest) {
 
       } catch (error) {
         log("ERROR", "Database operation failed", userId, { error: error instanceof Error ? error.message : "Unknown error" })
-        return NextResponse.json(
+        return jsonWithCors(
           { success: false, error: "Database operation failed" },
           { status: 500 }
         )
@@ -319,7 +343,7 @@ export async function POST(req: NextRequest) {
         ? "¡Wow! ¡Llegaste al máximo! Has sido increíblemente constante. Vuelve mañana para seguir rompiéndola. 💪🏆"
         : "¡Llegaste al máximo de mensajes por hoy! Vuelve mañana para seguir hablando conmigo. 💪🔥"
 
-      return NextResponse.json(
+      return jsonWithCors(
         formatResponse(limitReply, {
           userId,
           messageCount: userUsage.messages,
@@ -361,7 +385,7 @@ export async function POST(req: NextRequest) {
       const processingTime = Date.now() - startTime
       const remainingMessages = CONFIG.MESSAGE_LIMIT - (userUsage.messages + 1)
 
-      return NextResponse.json(
+      return jsonWithCors(
         formatResponse(reply, {
           userId,
           messageCount: userUsage.messages + 1,
@@ -373,7 +397,7 @@ export async function POST(req: NextRequest) {
 
     } catch (aiError) {
       log("ERROR", "AI service failed", userId, { error: aiError instanceof Error ? aiError.message : "Unknown error" })
-      return NextResponse.json(
+      return jsonWithCors(
         { success: false, error: "AI service temporarily unavailable" },
         { status: 503 }
       )
@@ -383,7 +407,7 @@ export async function POST(req: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
     log("ERROR", "Request failed", undefined, { error: errorMessage })
 
-    return NextResponse.json(
+    return jsonWithCors(
       { success: false, error: errorMessage },
       { status: 500 }
     )
