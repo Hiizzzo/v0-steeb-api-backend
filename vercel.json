@@ -1,10 +1,10 @@
 {
   "functions": {
     "health.js": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@3.0.0"
     },
     "steeb.js": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@3.0.0"
     }
   },
   "rewrites": [
