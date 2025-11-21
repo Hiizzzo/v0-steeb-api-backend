@@ -1,7 +1,9 @@
-.next/
-node_modules/
-public/
-*.log
-.env
+# Force Vercel to not detect as Next.js project
+next.config.*
+package-lock.json
 
-# Force API-only deployment
+# Ignore all frontend files
+public/
+node_modules/
+
+# API-only project
