@@ -35,6 +35,8 @@ export default function handler(req, res) {
       MERCADOPAGO_ACCESS_TOKEN: MERCADOPAGO_ACCESS_TOKEN ?
         MERCADOPAGO_ACCESS_TOKEN.substring(0, 20) + '...' : '❌ Missing',
       VITE_MERCADOPAGO_PUBLIC_KEY: process.env.VITE_MERCADOPAGO_PUBLIC_KEY ? '✅ Set' : '❌ Missing',
+      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?
+        process.env.DEEPSEEK_API_KEY.substring(0, 20) + '...' : '❌ Missing',
       APP_BASE_URL: process.env.APP_BASE_URL || process.env.BASE_URL || '❌ Not configured',
       MP_NOTIFICATION_URL: MP_NOTIFICATION_URL || '❌ Not configured',
       MP_WEBHOOK_SECRET: MP_WEBHOOK_SECRET ? '✅ Set' : '❌ Not configured',
@@ -88,6 +90,7 @@ export default function handler(req, res) {
       },
       endpoints: {
         health: '✅ Working',
+        steeb: '/api/steeb',
         verify: '/api/payments/verify',
         createPreference: '/api/payments/create-preference',
         webhook: '/api/payments/webhook'
