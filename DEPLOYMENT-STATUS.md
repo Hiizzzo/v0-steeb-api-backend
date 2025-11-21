@@ -1,6 +1,6 @@
 # 🚀 STEEB API - DEPLOYMENT STATUS
 
-## ✅ **CURRENT STATUS: LIVE & GLOBAL!**
+## 🔄 **FORCING NEW DEPLOYMENT - Mercado Pago Backend**
 
 ### 🎯 **PRODUCTION LINKS:**
 - **🔗 API LIVE:** https://v0-steeb-api-backend.vercel.app/api/steeb
