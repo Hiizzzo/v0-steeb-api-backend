@@ -13,7 +13,9 @@
       "Bash(python:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(npm run dev)",
+      "Bash(npx vercel dev:*)"
     ],
     "deny": [],
     "ask": []
