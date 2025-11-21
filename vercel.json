@@ -1,20 +1,19 @@
 {
-  "functions": {
-    "api/health.js": {
-      "runtime": "@vercel/node@3.0.0"
-    },
-    "api/steeb.js": {
-      "runtime": "@vercel/node@3.0.0"
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
     }
-  },
-  "rewrites": [
+  ],
+  "routes": [
     {
-      "source": "/api/health",
-      "destination": "/api/health.js"
+      "src": "/api/health",
+      "dest": "/api/health.js"
     },
     {
-      "source": "/api/steeb",
-      "destination": "/api/steeb.js"
+      "src": "/api/steeb",
+      "dest": "/api/steeb.js"
     }
   ]
 }
