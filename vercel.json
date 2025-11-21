@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "echo 'API-ONLY PROJECT - NO BUILD REQUIRED'",
   "builds": [
     {
       "src": "api/**/*.js",
@@ -17,6 +16,5 @@
     "api/**/*.js": {
       "maxDuration": 30
     }
-  },
-  "framework": null
+  }
 }
