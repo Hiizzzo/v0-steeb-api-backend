@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "health.js": {
+      "runtime": "@vercel/node"
+    },
+    "steeb.js": {
+      "runtime": "@vercel/node"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/health",
