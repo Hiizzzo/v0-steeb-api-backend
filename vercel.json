@@ -1,20 +1,20 @@
 {
   "functions": {
-    "health.js": {
+    "api/health.js": {
       "runtime": "@vercel/node@3.0.0"
     },
-    "steeb.js": {
+    "api/steeb.js": {
       "runtime": "@vercel/node@3.0.0"
     }
   },
   "rewrites": [
     {
       "source": "/api/health",
-      "destination": "/health.js"
+      "destination": "/api/health.js"
     },
     {
       "source": "/api/steeb",
-      "destination": "/steeb.js"
+      "destination": "/api/steeb.js"
     }
   ]
 }
