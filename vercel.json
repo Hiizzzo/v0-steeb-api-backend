@@ -1,19 +1,22 @@
 {
+  "version": 2,
+  "buildCommand": "echo 'No build required for API-only project'",
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    }
+  ],
   "functions": {
-    "api/health.js": {
-      "maxDuration": 30
-    },
-    "api/payments/create-preference.js": {
-      "maxDuration": 30
-    },
-    "api/payments/verify.js": {
-      "maxDuration": 30
-    },
-    "api/payments/status.js": {
-      "maxDuration": 30
-    },
-    "api/payments/webhook.js": {
+    "api/**/*.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "framework": null
 }
