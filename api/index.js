@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import crypto from 'crypto';
 import 'dotenv/config';
-import { createPurchaseStore } from './server/purchaseStore.js';
+import { createPurchaseStore } from '../server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `http://localhost:${PORT}`;
+const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `https://v0-steeb-api-backend.vercel.app`;
 
 // Configurar CORS y JSON
 app.use(cors());
@@ -26,7 +26,7 @@ const MERCADOPAGO_PUBLIC_KEY = process.env.MERCADOPAGO_PUBLIC_KEY || '';
 const MP_NOTIFICATION_URL = process.env.MP_NOTIFICATION_URL || `${APP_BASE_URL}/api/payments/webhook`;
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || '';
 
-const paymentPlansPath = path.join(__dirname, 'config', 'paymentPlans.json');
+const paymentPlansPath = path.join(__dirname, '..', 'config', 'paymentPlans.json');
 
 let PAYMENT_PLANS = [];
 try {
@@ -116,7 +116,7 @@ const fetchPaymentById = async (id) => {
 // Configurar multer para uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, 'public', 'lovable-uploads');
+    const uploadDir = path.join(__dirname, '..', 'public', 'lovable-uploads');
 
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -145,67 +145,8 @@ const upload = multer({
   }
 });
 
-// Endpoint uploads
-app.post('/api/upload-image', upload.single('image'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
-    }
-
-    const filename = req.file.filename;
-    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
-    const originalUrl = `${baseUrl}/lovable-uploads/${filename}`;
-
-    res.json({
-      success: true,
-      filename: filename,
-      path: `/lovable-uploads/${filename}`,
-      original_url: originalUrl,
-      message: 'Imagen subida exitosamente'
-    });
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Servir archivos estáticos
-app.use('/lovable-uploads', express.static(path.join(__dirname, 'public', 'lovable-uploads')));
-
-// Listar imágenes
-app.get('/api/images', (req, res) => {
-  try {
-    const uploadDir = path.join(__dirname, 'public', 'lovable-uploads');
-
-    if (!fs.existsSync(uploadDir)) {
-      return res.json({ images: [] });
-    }
-
-    const files = fs.readdirSync(uploadDir);
-    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
-
-    const images = files.filter(file => {
-      const ext = path.extname(file).toLowerCase();
-      return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
-    }).map(file => ({
-      filename: file,
-      path: `/lovable-uploads/${file}`,
-      original_url: `${baseUrl}/lovable-uploads/${file}`,
-      size: fs.statSync(path.join(uploadDir, file)).size
-    }));
-
-    res.json({ images });
-  } catch (error) {
-    console.error('Error listing images:', error);
-    res.status(500).json({ error: 'Error al listar imágenes' });
-  }
-});
-
-// ================================
-// HEALTH CHECK ENDPOINT
-// ================================
-
-app.get('/api/health', (req, res) => {
+// Health Check Endpoint
+app.get('/health', (req, res) => {
   try {
     console.log('🏥 HEALTH: Comprehensive health check requested');
 
@@ -286,7 +227,7 @@ app.get('/api/health', (req, res) => {
 // MERCADO PAGO ENDPOINTS (PRODUCCIÓN)
 // ================================
 
-app.post('/api/payments/create-preference', async (req, res) => {
+app.post('/payments/create-preference', async (req, res) => {
   try {
     const { planId, quantity = 1, userId, email, name } = req.body || {};
     console.log('📥 create-preference body:', req.body);
@@ -349,7 +290,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
   }
 });
 
-app.post('/api/payments/verify', async (req, res) => {
+app.post('/payments/verify', async (req, res) => {
   try {
     const { paymentId, externalReference, preferenceId } = req.body || {};
 
@@ -386,7 +327,7 @@ app.post('/api/payments/verify', async (req, res) => {
   }
 });
 
-app.get('/api/payments/status', async (req, res) => {
+app.get('/payments/status', async (req, res) => {
   try {
     const { planId, userId, email } = req.query;
 
@@ -411,7 +352,7 @@ app.get('/api/payments/status', async (req, res) => {
   }
 });
 
-app.post('/api/payments/webhook', async (req, res) => {
+app.post('/payments/webhook', async (req, res) => {
   try {
     if (MP_WEBHOOK_SECRET) {
       const provided = req.query.secret || req.headers['x-webhook-secret'];
@@ -449,8 +390,60 @@ app.post('/api/payments/webhook', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor STEEB corriendo en http://localhost:${PORT}`);
-  console.log(`💰 Plan configurado: ${PAYMENT_PLANS[0]?.price} ARS`);
-  console.log(`📁 Directorio de uploads: ${path.join(__dirname, 'public', 'lovable-uploads')}`);
+// Endpoint uploads
+app.post('/upload-image', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
+    }
+
+    const filename = req.file.filename;
+    const baseUrl = process.env.BASE_URL || `https://v0-steeb-api-backend.vercel.app`;
+    const originalUrl = `${baseUrl}/lovable-uploads/${filename}`;
+
+    res.json({
+      success: true,
+      filename: filename,
+      path: `/lovable-uploads/${filename}`,
+      original_url: originalUrl,
+      message: 'Imagen subida exitosamente'
+    });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
 });
+
+// Servir archivos estáticos
+app.use('/lovable-uploads', express.static(path.join(__dirname, '..', 'public', 'lovable-uploads')));
+
+// Listar imágenes
+app.get('/images', (req, res) => {
+  try {
+    const uploadDir = path.join(__dirname, '..', 'public', 'lovable-uploads');
+
+    if (!fs.existsSync(uploadDir)) {
+      return res.json({ images: [] });
+    }
+
+    const files = fs.readdirSync(uploadDir);
+    const baseUrl = process.env.BASE_URL || `https://v0-steeb-api-backend.vercel.app`;
+
+    const images = files.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
+    }).map(file => ({
+      filename: file,
+      path: `/lovable-uploads/${file}`,
+      original_url: `${baseUrl}/lovable-uploads/${file}`,
+      size: fs.statSync(path.join(uploadDir, file)).size
+    }));
+
+    res.json({ images });
+  } catch (error) {
+    console.error('Error listing images:', error);
+    res.status(500).json({ error: 'Error al listar imágenes' });
+  }
+});
+
+export default app;
