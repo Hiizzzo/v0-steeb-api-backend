@@ -1,16 +1,19 @@
 {
-  "version": 2,
-  "buildCommand": null,
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/health.js": {
+      "maxDuration": 30
+    },
+    "api/payments/create-preference.js": {
+      "maxDuration": 30
+    },
+    "api/payments/verify.js": {
+      "maxDuration": 30
+    },
+    "api/payments/status.js": {
+      "maxDuration": 30
+    },
+    "api/payments/webhook.js": {
+      "maxDuration": 30
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    }
-  ]
+  }
 }
