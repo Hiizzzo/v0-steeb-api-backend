@@ -271,27 +271,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🎯 SISTEMA DE LÍMITES (OPCIONAL PERO RECOMENDADO)
-    let user = getOrCreateUser(userId);
-
-    if (user.remainingMessages <= 0) {
-      return res.status(429).json({
-        success: false,
-        error: 'Has alcanzado tu límite diario de mensajes. Vuelve mañana.',
-        data: {
-          user: {
-            messageCount: user.messageCount,
-            remainingMessages: 0
-          }
-        }
-      });
-    }
-
     // 🤖 LLAMADA A DEEPSEEK (CON FUNCIÓN OPTIMIZADA)
     const deepseekResponse = await callDeepSeekAPI(message, userId);
 
-    // Actualizar contador del usuario
-    user = decrementMessageCount(user);
+    // 💪 SIN LÍMITES DE MENSAJES - STEEB SIEMPRE DISPONIBLE
 
     // 🔄 RESPUESTA CORRECTA PARA EL FRONTEND
     const response = {
@@ -299,8 +282,8 @@ export default async function handler(req, res) {
       data: {
         reply: deepseekResponse.response, // Mantener respuesta de DeepSeek
         user: {
-          messageCount: user.messageCount,
-          remainingMessages: user.remainingMessages
+          messageCount: null, // Sin límites
+          remainingMessages: null // Sin límites
         }
       },
       meta: {
