@@ -163,12 +163,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (MP_WEBHOOK_SECRET) {
-      const provided = req.query.secret || req.headers['x-webhook-secret'];
-      if (provided !== MP_WEBHOOK_SECRET) {
-        return res.status(401).json({ error: 'Token de webhook inválido' });
-      }
-    }
+    // Log para depuración
+    console.log('🔔 Webhook recibido:');
+    console.log('Body:', JSON.stringify(req.body, null, 2));
 
     const event = req.body || {};
     const query = req.query || {};
