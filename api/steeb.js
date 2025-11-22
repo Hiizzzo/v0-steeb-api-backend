@@ -276,15 +276,11 @@ export default async function handler(req, res) {
 
     // 💪 SIN LÍMITES DE MENSAJES - STEEB SIEMPRE DISPONIBLE
 
-    // 🔄 RESPUESTA CORRECTA PARA EL FRONTEND
+    // 🔄 RESPUESTA SIMPLE Y LIMPIA - SIN LÍMITES
     const response = {
       success: true,
       data: {
-        reply: deepseekResponse.response, // Mantener respuesta de DeepSeek
-        user: {
-          messageCount: null, // Sin límites
-          remainingMessages: null // Sin límites
-        }
+        reply: deepseekResponse.response // Solo la respuesta de STEEB
       },
       meta: {
         model: deepseekResponse.model || 'deepseek-chat',
