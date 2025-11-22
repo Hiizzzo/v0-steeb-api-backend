@@ -15,7 +15,9 @@
       "Bash(findstr:*)",
       "Bash(tasklist:*)",
       "Bash(npm run dev)",
-      "Bash(npx vercel dev:*)"
+      "Bash(npx vercel dev:*)",
+      "Bash(find:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

@@ -30,6 +30,10 @@
     {
       "src": "/api/payments/webhook",
       "dest": "/api/payments/webhook.js"
+    },
+    {
+      "src": "/api/users/role",
+      "dest": "/api/users/role.js"
     }
   ]
 }
