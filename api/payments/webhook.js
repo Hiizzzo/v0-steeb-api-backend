@@ -164,8 +164,9 @@ export default async function handler(req, res) {
 
   try {
     // Log para depuración
-    console.log('🔔 Webhook recibido:');
+    console.log('🔔 Webhook recibido desde IP:', req.ip);
     console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
 
     const event = req.body || {};
     const query = req.query || {};
@@ -179,14 +180,22 @@ export default async function handler(req, res) {
       query.id ||
       event.id;
 
+    console.log('🎯 Topic:', topic);
+    console.log('🆔 Resource ID:', resourceId);
+
     if (topic && topic.includes('payment') && resourceId) {
       try {
+        console.log('🔍 Buscando pago con ID:', resourceId);
         const payment = await fetchPaymentById(resourceId);
+        console.log('💳 Pago encontrado:', JSON.stringify(payment, null, 2));
+
         await persistPaymentFromMercadoPago(payment);
         console.log('✅ Webhook Mercado Pago procesado:', resourceId);
       } catch (error) {
         console.error('❌ Error procesando webhook de Mercado Pago:', error);
       }
+    } else {
+      console.log('⚠️ Webhook ignorado - topic o resourceId inválido');
     }
 
     res.json({ received: true });
