@@ -17,7 +17,10 @@
       "Bash(npm run dev)",
       "Bash(npx vercel dev:*)",
       "Bash(find:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run server:*)",
+      "Bash(npm run)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
