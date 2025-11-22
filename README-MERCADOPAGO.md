@@ -51,7 +51,7 @@ Crea una preferencia de pago en Mercado Pago.
 **Body:**
 ```json
 {
-  "planId": "dark-mode-premium",
+  "planId": "black-user-plan",
   "quantity": 1,
   "userId": "user123",
   "email": "usuario@ejemplo.com",
@@ -65,11 +65,12 @@ Crea una preferencia de pago en Mercado Pago.
   "preferenceId": "123456789",
   "initPoint": "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789",
   "sandboxInitPoint": "https://sandbox.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789",
-  "externalReference": "dark-mode-premium_user123_1234567890",
+  "externalReference": "black-user-plan_user123_1234567890",
   "plan": {
-    "id": "dark-mode-premium",
-    "title": "Dark mode",
-    "price": 1
+    "id": "black-user-plan",
+    "title": "Usuario Black",
+    "price": 1,
+    "tipoUsuario": "black"
   }
 }
 ```
@@ -81,7 +82,7 @@ Verifica el estado de un pago.
 ```json
 {
   "paymentId": "123456789",
-  "externalReference": "dark-mode-premium_user123_1234567890",
+  "externalReference": "black-user-plan_user123_1234567890",
   "preferenceId": "123456789"
 }
 ```
@@ -99,7 +100,7 @@ Consulta el estado de compra de un plan por usuario.
 {
   "hasPurchased": true,
   "status": "approved",
-  "planId": "dark-mode-premium",
+  "planId": "black-user-plan",
   "userId": "user123",
   "paymentId": "123456789",
   "amount": 1,
@@ -146,12 +147,22 @@ Lista todas las imágenes subidas.
 
 ## Planes de Pago
 
-Los planes se configuran en `config/paymentPlans.json`. El plan actual incluye:
+Los planes se configuran en `config/paymentPlans.json`. Los planes disponibles son:
 
-- **Dark Mode Premium** ($1 ARS)
+- **Usuario Black** ($1 ARS)
   - Tema oscuro permanente
-  - Acceso diario al juego Shiny
-  - Funciones prioritarias
+  - Acceso a funciones Black exclusivas
+
+- **Usuario Shiny** ($5 ARS)
+  - Todos los beneficios de Usuario Black
+  - Acceso exclusivo al juego Shiny diario
+  - Contenido exclusivo y funciones premium
+  - Prioridad en soporte y nuevas features
+
+**Tipos de Usuario**:
+- **White**: Usuario gratuito (default)
+- **Black**: Usuario que compró el plan Black ($1 ARS)
+- **Shiny**: Usuario que compró el plan Shiny ($5 ARS)
 
 ## Almacenamiento
 

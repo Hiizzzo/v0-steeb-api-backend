@@ -1,4 +1,4 @@
-import { getUserFromFirestore } from '../../lib/firebase.js';
+import { getUserFromFirestore, db } from '../../lib/firebase.js';
 
 export default async function handler(req, res) {
   // Enhanced CORS headers for Vercel compatibility
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`🔍 Getting user role - UserId: ${userId}, Email: ${email}`);
+    console.log(`🔍 Getting user tipo - UserId: ${userId}, Email: ${email}`);
 
     let user;
 
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       data: {
         userId: user.id,
         email: user.email,
-        role: user.role,
+        tipoUsuario: user.tipoUsuario || 'white', // white, black, shiny
         permissions: user.permissions,
         isActive: user.isActive,
         lastPayment: user.lastPayment,
@@ -91,12 +91,12 @@ export default async function handler(req, res) {
       }
     };
 
-    console.log(`✅ User role retrieved - User: ${user.id}, Role: ${user.role}`);
+    console.log(`✅ User tipo retrieved - User: ${user.id}, Tipo: ${user.tipoUsuario || 'white'}`);
 
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('❌ Error getting user role:', error);
+    console.error('❌ Error getting user tipo:', error);
 
     return res.status(500).json({
       success: false,

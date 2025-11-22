@@ -1,17 +1,35 @@
 [
   {
-    "id": "dark-mode-premium",
-    "title": "Dark mode",
-    "description": "Desbloquea el tema oscuro oficial y acceso diario al juego Shiny de STEEB.",
+    "id": "black-user-plan",
+    "title": "Usuario Black",
+    "description": "Conviértete en usuario Black y desbloquea el tema oscuro exclusivo.",
     "price": 1,
     "currency": "ARS",
+    "tipoUsuario": "black",
     "features": [
       "Tema dark permanente en todos los dispositivos",
-      "1 intento diario al juego Shiny (primer intento incluido al comprar)",
-      "Acceso prioritario a nuevas funciones premium",
+      "Acceso a funciones Black exclusivas",
       "Pagos con tarjetas de crédito y débito vía Mercado Pago"
     ],
+    "permissions": ["dark_mode", "basic_features"],
     "trialDays": 0,
     "mostPopular": true
+  },
+  {
+    "id": "shiny-user-plan",
+    "title": "Usuario Shiny",
+    "description": "El nivel más exclusivo. Acceso total a todas las funciones de STEEB.",
+    "price": 5,
+    "currency": "ARS",
+    "tipoUsuario": "shiny",
+    "features": [
+      "Todos los beneficios de Usuario Black",
+      "Acceso exclusivo al juego Shiny diario",
+      "Contenido exclusivo y funciones premium",
+      "Prioridad en soporte y nuevas features"
+    ],
+    "permissions": ["shiny_game", "dark_mode", "premium_features", "exclusive_content"],
+    "trialDays": 0,
+    "mostPopular": false
   }
 ]

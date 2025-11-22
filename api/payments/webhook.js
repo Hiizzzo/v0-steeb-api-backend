@@ -3,9 +3,10 @@ import 'dotenv/config';
 import { createPurchaseStore } from '../../server/purchaseStore.js';
 import {
   getUserFromFirestore,
-  updateUserRole,
+  updateUserTipo,
   createPaymentRecord,
   updatePaymentStatus,
+  createUserInFirestore,
   db
 } from '../../lib/firebase.js';
 import admin from 'firebase-admin';
@@ -87,26 +88,44 @@ const processApprovedPayment = async (paymentRecord) => {
     // 1. Verificar si el usuario existe en Firebase
     let user = await getUserFromFirestore(paymentRecord.userId);
 
-    // 2. Si no existe, crear el usuario
+    // 2. Determinar el tipoUsuario según el plan comprado
+    let tipoUsuario = 'white'; // default
+    let permissions = [];
+
+    switch (paymentRecord.planId) {
+      case 'black-user-plan':
+        tipoUsuario = 'black';
+        permissions = ['dark_mode', 'basic_features'];
+        break;
+      case 'shiny-user-plan':
+        tipoUsuario = 'shiny';
+        permissions = ['shiny_game', 'dark_mode', 'premium_features', 'exclusive_content'];
+        break;
+      default:
+        tipoUsuario = 'white';
+        permissions = ['basic_features'];
+    }
+
+    // 3. Si no existe, crear el usuario
     if (!user) {
       console.log(`👤 Creating new user in Firebase: ${paymentRecord.userId}`);
       await createUserInFirestore({
         id: paymentRecord.userId,
         email: paymentRecord.email,
-        role: 'premium', // Usuario premium porque pagó
-        permissions: ['dark_mode', 'shiny_game', 'premium_features']
+        tipoUsuario: tipoUsuario,
+        permissions: permissions
       });
     } else {
-      // 3. Si existe, actualizar su rol a premium
-      console.log(`⬆️ Updating user role to premium: ${paymentRecord.userId}`);
-      await updateUserRole(
+      // 4. Si existe, actualizar su tipoUsuario
+      console.log(`⬆️ Updating user tipo: ${paymentRecord.userId} -> ${tipoUsuario}`);
+      await updateUserTipo(
         paymentRecord.userId,
-        'premium',
-        ['dark_mode', 'shiny_game', 'premium_features']
+        tipoUsuario,
+        permissions
       );
     }
 
-    // 4. Actualizar el último pago del usuario
+    // 5. Actualizar el último pago del usuario
     if (user) {
       await db.collection('users').doc(paymentRecord.userId).update({
         lastPayment: paymentRecord.paymentId,
@@ -114,7 +133,7 @@ const processApprovedPayment = async (paymentRecord) => {
       });
     }
 
-    console.log(`✅ User premium activated: ${paymentRecord.userId}`);
+    console.log(`✅ User tipo updated: ${paymentRecord.userId} -> ${tipoUsuario}`);
 
   } catch (error) {
     console.error('❌ Error processing approved payment:', error);
@@ -122,31 +141,6 @@ const processApprovedPayment = async (paymentRecord) => {
   }
 };
 
-// Helper function para crear usuario (importamos desde firebase.js)
-const createUserInFirestore = async (userData) => {
-  try {
-    const userRef = db.collection('users').doc(userData.id);
-
-    const userDoc = {
-      id: userData.id,
-      email: userData.email || null,
-      role: userData.role || 'free',
-      permissions: userData.permissions || [],
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastPayment: null,
-      isActive: true
-    };
-
-    await userRef.set(userDoc);
-    console.log(`✅ User created in Firestore: ${userData.id}`);
-
-    return userDoc;
-  } catch (error) {
-    console.error('❌ Error creating user in Firestore:', error);
-    throw error;
-  }
-};
 
 const fetchPaymentById = async (id) => {
   return await mpRequest(`/v1/payments/${id}`, { method: 'GET' });
