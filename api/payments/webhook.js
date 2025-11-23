@@ -52,11 +52,14 @@ const mapPaymentToRecord = (payment) => {
   };
 };
 
-const persistPaymentFromMercadoPago = async (payment) => {
+const persistPaymentFromMercadoPago = async (payment, avatarUrl = null) => {
   const record = mapPaymentToRecord(payment);
   if (!record) {
     throw new Error('Pago no encontrado en Mercado Pago');
   }
+
+  // Agregar el avatar recibido del frontend
+  record.avatarUrl = avatarUrl;
 
   try {
     // 1. Guardar en el sistema local existente
@@ -75,7 +78,7 @@ const persistPaymentFromMercadoPago = async (payment) => {
     });
 
     // 3. Si el pago está aprobado, actualizar rol del usuario
-    if (record.status === 'approved' && record.userId) {
+    if (record.status === 'approved') {
       await processApprovedPayment(record);
     }
 
@@ -89,15 +92,33 @@ const persistPaymentFromMercadoPago = async (payment) => {
 const processApprovedPayment = async (paymentRecord) => {
   try {
     console.log(`🎉 Processing approved payment: ${paymentRecord.paymentId}`);
-    console.log(`📧 Payer email: ${paymentRecord.email}`);
     console.log(`📋 Plan: ${paymentRecord.planId}`);
     console.log(`🆔 Original userId: ${paymentRecord.userId}`);
+    console.log(`🖼️ Avatar received from frontend: ${paymentRecord.avatarUrl || 'Not provided'}`);
 
-    // 1. Primero, intentar encontrar al usuario por el email del payer
+    // 1. Primero, intentar encontrar al usuario por el avatar (método preferido)
     let user = null;
     let targetUserId = paymentRecord.userId;
 
-    if (paymentRecord.email && paymentRecord.email !== 'anon') {
+    if (paymentRecord.avatarUrl && paymentRecord.avatarUrl.trim() !== '') {
+      console.log(`🔍 Searching user by avatar: ${paymentRecord.avatarUrl}`);
+      const usersSnapshot = await db.collection('users')
+        .where('avatar', '==', paymentRecord.avatarUrl)
+        .limit(1)
+        .get();
+
+      if (!usersSnapshot.empty) {
+        user = usersSnapshot.docs[0].data();
+        targetUserId = usersSnapshot.docs[0].id;
+        console.log(`✅ User found by avatar: ${targetUserId}`);
+        console.log(`📧 User email: ${user.email || 'No email'}`);
+      } else {
+        console.log(`❌ No user found with avatar: ${paymentRecord.avatarUrl}`);
+      }
+    }
+
+    // 2. Si no se encontró por avatar, intentar por el email del payer
+    if (!user && paymentRecord.email && paymentRecord.email !== 'anon') {
       console.log(`🔍 Searching user by email: ${paymentRecord.email}`);
       const usersSnapshot = await db.collection('users')
         .where('email', '==', paymentRecord.email)
@@ -108,19 +129,23 @@ const processApprovedPayment = async (paymentRecord) => {
         user = usersSnapshot.docs[0].data();
         targetUserId = usersSnapshot.docs[0].id;
         console.log(`✅ User found by email: ${targetUserId}`);
+        console.log(`🖼️ User avatar: ${user.avatar || 'No avatar'}`);
       } else {
         console.log(`❌ No user found with email: ${paymentRecord.email}`);
       }
     }
 
-    // 2. Si no se encontró por email, intentar por el userId original
+    // 3. Si no se encontró por email, intentar por el userId original
     if (!user && paymentRecord.userId !== 'anon') {
       console.log(`🔍 Searching user by original userId: ${paymentRecord.userId}`);
       user = await getUserFromFirestore(paymentRecord.userId);
       targetUserId = paymentRecord.userId;
+      if (user) {
+        console.log(`✅ User found by userId: ${targetUserId}`);
+      }
     }
 
-    // 3. Si sigue sin encontrarse, listar usuarios disponibles
+    // 4. Si sigue sin encontrarse, listar usuarios disponibles para depuración
     if (!user) {
       console.log(`⚠️ User not found, listing available users...`);
       const allUsersSnapshot = await db.collection('users').limit(10).get();
@@ -129,9 +154,13 @@ const processApprovedPayment = async (paymentRecord) => {
         console.log(`📋 Available users:`);
         allUsersSnapshot.docs.forEach((doc, index) => {
           const userData = doc.data();
-          console.log(`  ${index + 1}. ID: ${doc.id} | Email: ${userData.email || 'No email'} | Tipo: ${userData.tipoUsuario || 'white'}`);
+          console.log(`  ${index + 1}. ID: ${doc.id}`);
+          console.log(`     Email: ${userData.email || 'No email'}`);
+          console.log(`     🖼️ Avatar: ${userData.avatar || 'No avatar'}`);
+          console.log(`     Tipo: ${userData.tipoUsuario || 'white'}`);
+          console.log('');
         });
-        console.log(`💡 Payer email (${paymentRecord.email}) needs to match one of these users`);
+        console.log(`💡 The avatar URL from frontend needs to match one of these avatars`);
       }
     }
 
@@ -235,7 +264,11 @@ export default async function handler(req, res) {
         const payment = await fetchPaymentById(resourceId);
         console.log('💳 Pago encontrado:', JSON.stringify(payment, null, 2));
 
-        await persistPaymentFromMercadoPago(payment);
+        // Obtener avatar del body o query params
+        const avatarUrl = req.body?.avatarUrl || req.query?.avatarUrl || null;
+        console.log('🖼️ Avatar URL recibido:', avatarUrl || 'No avatar provided');
+
+        await persistPaymentFromMercadoPago(payment, avatarUrl);
         console.log('✅ Webhook Mercado Pago procesado:', resourceId);
       } catch (error) {
         console.error('❌ Error procesando webhook de Mercado Pago:', error);

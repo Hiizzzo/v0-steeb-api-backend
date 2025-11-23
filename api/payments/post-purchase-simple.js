@@ -1,4 +1,4 @@
-// Endpoint para recibir datos del usuario después de la compra y asignar el rol correspondiente
+// Endpoint simplificado para post-compra con identificación por avatar
 import 'dotenv/config';
 import { MercadoPagoConfig } from 'mercadopago';
 import { db, getUserFromFirestore, updateUserTipo, createPaymentRecord } from './lib/firebase.js';
@@ -60,13 +60,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('🔔 POST-COMPRA: Recibiendo datos del usuario...');
+    console.log('🔔 POST-COMPRA-SIMPLE: Recibiendo datos...');
     console.log('Body:', JSON.stringify(req.body, null, 2));
 
     const {
-      paymentId,           // ID del pago de Mercado Pago
-      userAvatar,          // URL del avatar del usuario (OBLIGATORIO para identificación)
-      userName             // Nombre del usuario (opcional)
+      paymentId,      // ID del pago de Mercado Pago
+      userAvatar,     // URL del avatar del usuario (OBLIGATORIO)
+      userName        // Nombre del usuario (opcional)
     } = req.body || {};
 
     if (!paymentId || !userAvatar) {
@@ -79,12 +79,53 @@ export default async function handler(req, res) {
 
     console.log(`🎯 Datos recibidos:`);
     console.log(`   - Payment ID: ${paymentId}`);
-    console.log(`   - User ID: ${userId}`);
-    console.log(`   - User Email: ${userEmail}`);
-    console.log(`   - User Avatar: ${userAvatar || 'No proporcionado'}`);
+    console.log(`   - User Avatar: ${userAvatar}`);
     console.log(`   - User Name: ${userName || 'No proporcionado'}`);
 
-    // 1. Verificar el pago en Mercado Pago
+    // 1. Buscar usuario por avatar (método principal)
+    console.log(`\n🔍 Buscando usuario por avatar...`);
+    const usersSnapshot = await db.collection('users')
+      .where('avatar', '==', userAvatar)
+      .limit(1)
+      .get();
+
+    let user = null;
+    let userId = null;
+
+    if (!usersSnapshot.empty) {
+      user = usersSnapshot.docs[0].data();
+      userId = usersSnapshot.docs[0].id;
+      console.log(`✅ Usuario encontrado por avatar: ${userId}`);
+      console.log(`📧 Email: ${user.email || 'No email'}`);
+      console.log(`🎨 Tipo actual: ${user.tipoUsuario || 'white'}`);
+    } else {
+      console.log(`❌ No se encontró usuario con ese avatar`);
+
+      // Listar avatares disponibles
+      const allUsersSnapshot = await db.collection('users').limit(5).get();
+      if (!allUsersSnapshot.empty) {
+        console.log(`📋 Avatares disponibles:`);
+        allUsersSnapshot.docs.forEach((doc, index) => {
+          const userData = doc.data();
+          console.log(`  ${index + 1}. ${userData.email || 'No email'}: ${userData.avatar ? userData.avatar.substring(0, 50) + '...' : 'No avatar'}`);
+        });
+      }
+
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'No se encontró un usuario con ese avatar',
+        debug: {
+          avatarProvided: userAvatar,
+          availableAvatars: allUsersSnapshot.docs.map(doc => ({
+            email: doc.data().email,
+            avatar: doc.data().avatar
+          }))
+        }
+      });
+    }
+
+    // 2. Verificar el pago en Mercado Pago
     console.log(`\n💳 Verificando pago en Mercado Pago...`);
     const payment = await fetchPaymentById(paymentId);
 
@@ -99,23 +140,20 @@ export default async function handler(req, res) {
     console.log(`✅ Pago encontrado:`);
     console.log(`   - Status: ${payment.status}`);
     console.log(`   - Amount: ${payment.transaction_amount} ${payment.currency_id}`);
-    console.log(`   - Plan (de external_reference): ${payment.external_reference}`);
 
-    // 2. Verificar que el pago esté aprobado
     if (payment.status !== 'approved') {
       return res.status(400).json({
         success: false,
         error: 'Payment not approved',
-        message: `El pago no está aprobado. Status actual: ${payment.status}`,
-        paymentStatus: payment.status
+        message: `El pago no está aprobado. Status: ${payment.status}`
       });
     }
 
-    // 3. Extraer el planId de la external_reference
+    // 3. Determinar el plan
     const planId = payment.external_reference?.split('_')[0] || 'unknown';
     console.log(`📋 Plan detectado: ${planId}`);
 
-    // 4. Determinar el tipoUsuario y permisos según el plan
+    // 4. Determinar tipoUsuario y permisos
     let tipoUsuario = 'white';
     let permissions = ['basic_features'];
 
@@ -128,60 +166,27 @@ export default async function handler(req, res) {
         tipoUsuario = 'shiny';
         permissions = ['shiny_game', 'dark_mode', 'premium_features', 'exclusive_content'];
         break;
-      default:
-        tipoUsuario = 'white';
-        permissions = ['basic_features'];
     }
 
     console.log(`🎨 Asignando tipoUsuario: ${tipoUsuario}`);
-    console.log(`🔑 Permisos: ${JSON.stringify(permissions)}`);
 
-    // 5. Buscar o crear el usuario en Firebase
-    console.log(`\n🔍 Buscando usuario en Firebase: ${userId}`);
-    let user = await getUserFromFirestore(userId);
+    // 5. Actualizar el usuario
+    console.log(`\n🔄 Actualizando rol del usuario...`);
 
-    if (!user) {
-      console.log(`👤 Usuario no encontrado, creándolo...`);
+    await updateUserTipo(userId, tipoUsuario, permissions);
 
-      // Crear usuario con los datos proporcionados
-      const userRef = db.collection('users').doc(userId);
-      const userDoc = {
-        id: userId,
-        email: userEmail,
-        tipoUsuario: tipoUsuario,
-        permissions: permissions,
-        avatar: userAvatar || null,
-        displayName: userName || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastPayment: paymentId,
-        isActive: true
-      };
+    // Actualizar información adicional
+    const updateData = {
+      lastPayment: paymentId,
+      updatedAt: new Date().toISOString()
+    };
 
-      await userRef.set(userDoc);
-      console.log(`✅ Usuario creado exitosamente`);
-      user = userDoc;
-    } else {
-      console.log(`🔄 Usuario encontrado, actualizando rol...`);
+    if (userName) updateData.displayName = userName;
 
-      // Actualizar el rol del usuario
-      await updateUserTipo(userId, tipoUsuario, permissions);
+    await db.collection('users').doc(userId).update(updateData);
+    console.log(`✅ Usuario actualizado exitosamente`);
 
-      // Actualizar información adicional si se proporcionó
-      const updateData = {
-        lastPayment: paymentId,
-        updatedAt: new Date().toISOString()
-      };
-
-      if (userAvatar) updateData.avatar = userAvatar;
-      if (userName) updateData.displayName = userName;
-
-      await db.collection('users').doc(userId).update(updateData);
-      console.log(`✅ Usuario actualizado exitosamente`);
-    }
-
-    // 6. Guardar el registro del pago
-    console.log(`\n💾 Guardando registro del pago...`);
+    // 6. Guardar registro del pago
     await createPaymentRecord({
       id: paymentId,
       userId: userId,
@@ -189,10 +194,8 @@ export default async function handler(req, res) {
       status: payment.status,
       amount: payment.transaction_amount,
       currency: payment.currency_id,
-      externalReference: payment.external_reference
+      externalReference: payment.externalReference
     });
-
-    console.log(`✅ Registro del pago guardado`);
 
     // 7. Responder con éxito
     const response = {
@@ -200,37 +203,27 @@ export default async function handler(req, res) {
       message: 'Usuario actualizado exitosamente',
       data: {
         userId: userId,
-        userEmail: userEmail,
+        userEmail: user.email,
         tipoUsuario: tipoUsuario,
         permissions: permissions,
         planId: planId,
         paymentId: paymentId,
-        paymentStatus: payment.status,
         avatar: userAvatar,
-        displayName: userName
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        paymentProcessed: true,
-        userRoleUpdated: true
+        displayName: userName || user.displayName
       }
     };
 
-    console.log(`\n🎉 ¡PROCESO COMPLETADO!`);
-    console.log(`   ✅ Pago verificado: ${payment.status}`);
-    console.log(`   ✅ Usuario actualizado: ${userId}`);
-    console.log(`   ✅ Nuevo tipo: ${tipoUsuario}`);
+    console.log(`\n🎉 ¡ÉXITO! Usuario ${userId} actualizado a ${tipoUsuario}`);
 
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error('❌ Error en POST-COMPRA:', error);
+    console.error('❌ Error en POST-COMPRA-SIMPLE:', error);
     return res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: 'Error procesando la compra post-pago',
-      details: error.message,
-      timestamp: new Date().toISOString()
+      details: error.message
     });
   }
 }
