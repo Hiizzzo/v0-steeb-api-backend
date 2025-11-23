@@ -45,5 +45,53 @@
     "permissions": [],
     "trialDays": 0,
     "mostPopular": false
+  },
+  {
+    "id": "shiny-roll-1",
+    "title": "1 Tirada Shiny",
+    "description": "1 intento extra para el juego Shiny.",
+    "price": 1,
+    "currency": "ARS",
+    "tipoUsuario": "none",
+    "features": ["1 intento extra"],
+    "permissions": [],
+    "trialDays": 0,
+    "mostPopular": false
+  },
+  {
+    "id": "shiny-roll-5",
+    "title": "5 Tiradas Shiny",
+    "description": "5 intentos extra para el juego Shiny.",
+    "price": 5,
+    "currency": "ARS",
+    "tipoUsuario": "none",
+    "features": ["5 intentos extra"],
+    "permissions": [],
+    "trialDays": 0,
+    "mostPopular": false
+  },
+  {
+    "id": "shiny-roll-15",
+    "title": "15 Tiradas Shiny",
+    "description": "15 intentos extra para el juego Shiny.",
+    "price": 15,
+    "currency": "ARS",
+    "tipoUsuario": "none",
+    "features": ["15 intentos extra"],
+    "permissions": [],
+    "trialDays": 0,
+    "mostPopular": false
+  },
+  {
+    "id": "shiny-roll-30",
+    "title": "30 Tiradas Shiny",
+    "description": "30 intentos extra para el juego Shiny.",
+    "price": 30,
+    "currency": "ARS",
+    "tipoUsuario": "none",
+    "features": ["30 intentos extra"],
+    "permissions": [],
+    "trialDays": 0,
+    "mostPopular": false
   }
 ]

@@ -188,18 +188,23 @@ export const processApprovedPayment = async (paymentRecord) => {
         break;
       case 'shiny-roll-plan':
         isConsumable = true;
-        // La cantidad viene en la preferencia, pero aquí paymentRecord.amount es el total.
-        // paymentRecord no tiene la cantidad de items directamente mapeada en mapPaymentToRecord
-        // Pero podemos inferirla o asumirla.
-        // Mejor aún, si el plan es shiny-roll-plan, asumimos que cada unidad cuesta X y calculamos,
-        // O simplemente confiamos en que el frontend mandó la cantidad correcta en la preferencia.
-        // MercadoPago payment object tiene 'additional_info.items'.
-        // Por simplicidad y robustez, vamos a asumir que 1 compra = N rolls según el monto o items.
-        // Pero mapPaymentToRecord no trae items.
-        // Vamos a asumir que quantity viene en el item de la preferencia, pero aquí es difícil acceder.
-        // HACK: Por ahora, asumimos que el precio es $1 por roll.
-        // Si pagó $15, son 15 rolls.
         consumableQuantity = Math.floor(paymentRecord.amount || 1);
+        break;
+      case 'shiny-roll-1':
+        isConsumable = true;
+        consumableQuantity = 1;
+        break;
+      case 'shiny-roll-5':
+        isConsumable = true;
+        consumableQuantity = 5;
+        break;
+      case 'shiny-roll-15':
+        isConsumable = true;
+        consumableQuantity = 15;
+        break;
+      case 'shiny-roll-30':
+        isConsumable = true;
+        consumableQuantity = 30;
         break;
       default:
         tipoUsuario = 'white';
