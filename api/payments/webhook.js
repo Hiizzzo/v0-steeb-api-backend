@@ -31,15 +31,20 @@ const mpRequest = async (endpoint, options = {}) => {
 
 const mapPaymentToRecord = (payment) => {
   if (!payment) return null;
+
+  const planId = payment.external_reference?.split('_')[0] || 'unknown';
+  const userId = payment.external_reference?.split('_')[1] || 'anon';
+
   return {
     paymentId: payment.id,
     status: payment.status,
     statusDetail: payment.status_detail,
-    planId: payment.external_reference?.split('_')[0] || 'unknown',
-    userId: payment.external_reference?.split('_')[1] || null,
+    planId: planId,
+    userId: userId,
     email: payment.payer?.email,
     externalReference: payment.external_reference,
     preferenceId: payment.order?.id,
+    payerId: payment.payer?.id,
     amount: payment.transaction_amount,
     currency: payment.currency_id,
     processedAt: payment.date_created,
@@ -83,12 +88,54 @@ const persistPaymentFromMercadoPago = async (payment) => {
 
 const processApprovedPayment = async (paymentRecord) => {
   try {
-    console.log(`🎉 Processing approved payment for user: ${paymentRecord.userId}`);
+    console.log(`🎉 Processing approved payment: ${paymentRecord.paymentId}`);
+    console.log(`📧 Payer email: ${paymentRecord.email}`);
+    console.log(`📋 Plan: ${paymentRecord.planId}`);
+    console.log(`🆔 Original userId: ${paymentRecord.userId}`);
 
-    // 1. Verificar si el usuario existe en Firebase
-    let user = await getUserFromFirestore(paymentRecord.userId);
+    // 1. Primero, intentar encontrar al usuario por el email del payer
+    let user = null;
+    let targetUserId = paymentRecord.userId;
 
-    // 2. Determinar el tipoUsuario según el plan comprado
+    if (paymentRecord.email && paymentRecord.email !== 'anon') {
+      console.log(`🔍 Searching user by email: ${paymentRecord.email}`);
+      const usersSnapshot = await db.collection('users')
+        .where('email', '==', paymentRecord.email)
+        .limit(1)
+        .get();
+
+      if (!usersSnapshot.empty) {
+        user = usersSnapshot.docs[0].data();
+        targetUserId = usersSnapshot.docs[0].id;
+        console.log(`✅ User found by email: ${targetUserId}`);
+      } else {
+        console.log(`❌ No user found with email: ${paymentRecord.email}`);
+      }
+    }
+
+    // 2. Si no se encontró por email, intentar por el userId original
+    if (!user && paymentRecord.userId !== 'anon') {
+      console.log(`🔍 Searching user by original userId: ${paymentRecord.userId}`);
+      user = await getUserFromFirestore(paymentRecord.userId);
+      targetUserId = paymentRecord.userId;
+    }
+
+    // 3. Si sigue sin encontrarse, listar usuarios disponibles
+    if (!user) {
+      console.log(`⚠️ User not found, listing available users...`);
+      const allUsersSnapshot = await db.collection('users').limit(10).get();
+
+      if (!allUsersSnapshot.empty) {
+        console.log(`📋 Available users:`);
+        allUsersSnapshot.docs.forEach((doc, index) => {
+          const userData = doc.data();
+          console.log(`  ${index + 1}. ID: ${doc.id} | Email: ${userData.email || 'No email'} | Tipo: ${userData.tipoUsuario || 'white'}`);
+        });
+        console.log(`💡 Payer email (${paymentRecord.email}) needs to match one of these users`);
+      }
+    }
+
+    // 4. Determinar el tipoUsuario según el plan comprado
     let tipoUsuario = 'white'; // default
     let permissions = [];
 
@@ -106,34 +153,33 @@ const processApprovedPayment = async (paymentRecord) => {
         permissions = ['basic_features'];
     }
 
-    // 3. Si no existe, crear el usuario
-    if (!user) {
-      console.log(`👤 Creating new user in Firebase: ${paymentRecord.userId}`);
-      await createUserInFirestore({
-        id: paymentRecord.userId,
-        email: paymentRecord.email,
-        tipoUsuario: tipoUsuario,
-        permissions: permissions
-      });
-    } else {
-      // 4. Si existe, actualizar su tipoUsuario
-      console.log(`⬆️ Updating user tipo: ${paymentRecord.userId} -> ${tipoUsuario}`);
+    console.log(`🎨 Assigning tipoUsuario: ${tipoUsuario}`);
+
+    // 5. Si encontramos al usuario, actualizarlo
+    if (user) {
+      console.log(`⬆️ Updating user tipo: ${targetUserId} -> ${tipoUsuario}`);
+
       await updateUserTipo(
-        paymentRecord.userId,
+        targetUserId,
         tipoUsuario,
         permissions
       );
-    }
 
-    // 5. Actualizar el último pago del usuario
-    if (user) {
-      await db.collection('users').doc(paymentRecord.userId).update({
+      // Actualizar información adicional
+      await db.collection('users').doc(targetUserId).update({
         lastPayment: paymentRecord.paymentId,
-        lastPaymentAt: admin.firestore.FieldValue.serverTimestamp()
+        lastPaymentAt: admin.firestore.FieldValue.serverTimestamp(),
+        payerId: paymentRecord.payerId || null
       });
-    }
 
-    console.log(`✅ User tipo updated: ${paymentRecord.userId} -> ${tipoUsuario}`);
+      console.log(`✅ User tipo updated: ${targetUserId} -> ${tipoUsuario}`);
+      console.log(`📧 User email: ${user.email || 'No email'}`);
+
+    } else {
+      console.log(`❌ Cannot update user: No matching user found`);
+      console.log(`💡 Payer email (${paymentRecord.email}) needs to match a user email in Firebase`);
+      console.log(`💡 Or the userId needs to match a user ID in Firebase`);
+    }
 
   } catch (error) {
     console.error('❌ Error processing approved payment:', error);
