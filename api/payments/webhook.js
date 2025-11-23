@@ -221,18 +221,7 @@ const fetchPaymentById = async (id) => {
   return await mpRequest(`/v1/payments/${id}`, { method: 'GET' });
 };
 
-const mpRequest = async (endpoint, options = {}) => {
-  const url = `https://api.mercadopago.com${endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${MERCADOPAGO_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  });
-  return await response.json();
-};
+
 
 export default async function handler(req, res) {
   // Configurar CORS
