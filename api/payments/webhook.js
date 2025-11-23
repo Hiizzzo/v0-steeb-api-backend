@@ -36,7 +36,7 @@ const mapPaymentToRecord = (payment) => {
   const userId = payment.external_reference?.split('_')[1] || 'anon';
 
   return {
-    paymentId: payment.id,
+    paymentId: String(payment.id),
     status: payment.status,
     statusDetail: payment.status_detail,
     planId: planId,
@@ -93,7 +93,7 @@ const persistPaymentFromMercadoPago = async (payment, avatarUrl = null) => {
   }
 };
 
-const processApprovedPayment = async (paymentRecord) => {
+export const processApprovedPayment = async (paymentRecord) => {
   try {
     console.log(`🎉 Processing approved payment: ${paymentRecord.paymentId}`);
     console.log(`📋 Plan: ${paymentRecord.planId}`);
