@@ -80,12 +80,18 @@ const searchPayment = async ({ preferenceId, externalReference }) => {
 
 const mapPaymentToRecord = (payment) => {
   if (!payment) return null;
+
+  const parts = payment.external_reference?.split('_') || [];
+  const planId = parts[0] || 'unknown';
+  // Extract userId: join all parts between first (planId) and last (timestamp)
+  const userId = parts.length > 2 ? parts.slice(1, -1).join('_') : parts[1] || null;
+
   return {
     paymentId: payment.id,
     status: payment.status,
     statusDetail: payment.status_detail,
-    planId: payment.external_reference?.split('_')[0] || 'unknown',
-    userId: payment.external_reference?.split('_')[1] || null,
+    planId: planId,
+    userId: userId,
     email: payment.payer?.email,
     externalReference: payment.external_reference,
     preferenceId: payment.order?.id,
@@ -96,7 +102,7 @@ const mapPaymentToRecord = (payment) => {
   };
 };
 
-const persistPaymentFromMercadoPago = async (payment) => {
+export const persistPaymentFromMercadoPago = async (payment) => {
   const record = mapPaymentToRecord(payment);
   if (!record) {
     throw new Error('Pago no encontrado en Mercado Pago');
