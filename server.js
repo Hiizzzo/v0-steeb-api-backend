@@ -313,6 +313,11 @@ app.post('/api/payments/create-preference', async (req, res) => {
       return res.status(400).json({ error: 'planId es requerido' });
     }
 
+    if (!userId) {
+      console.error('❌ Error: userId es requerido para crear la preferencia');
+      return res.status(400).json({ error: 'userId es requerido' });
+    }
+
     const plan = getPlan(planId);
     if (!plan) {
       return res.status(404).json({ error: 'Plan no encontrado' });
