@@ -35,7 +35,11 @@ const savePurchases = (purchases) => {
     fs.writeFileSync(PURCHASES_FILE, JSON.stringify(purchases, null, 2));
     return true;
   } catch (error) {
-    console.error('Error saving purchases:', error);
+    if (error.code === 'EROFS') {
+      console.warn('⚠️ Read-only file system detected. Skipping local backup (expected in Vercel).');
+    } else {
+      console.error('Error saving purchases:', error);
+    }
     return false;
   }
 };
