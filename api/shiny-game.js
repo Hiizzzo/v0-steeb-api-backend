@@ -11,6 +11,8 @@ export default async function handler(req, res) {
       'http://localhost:8083',
       'http://127.0.0.1:8083',
       'https://v0-steeb-api-backend.vercel.app',
+      'https://steeb.vercel.app',
+      'https://steeb2.vercel.app',
     ];
 
     if (allowedOrigins.includes(origin) || !origin) {
