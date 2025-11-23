@@ -62,9 +62,13 @@ const persistPaymentFromMercadoPago = async (payment, avatarUrl = null) => {
   record.avatarUrl = avatarUrl;
 
   try {
-    // 1. Guardar en el sistema local existente
-    const store = await createPurchaseStore();
-    await store.upsert(record);
+    // 1. Guardar en el sistema local existente (solo si es posible)
+    try {
+      const store = await createPurchaseStore();
+      await store.upsert(record);
+    } catch (fsError) {
+      console.log('⚠️ Skipping local file storage (likely read-only fs):', fsError.message);
+    }
 
     // 2. Guardar en Firebase
     await createPaymentRecord({
@@ -265,6 +269,13 @@ export default async function handler(req, res) {
         console.log('🔍 Buscando pago con ID:', resourceId);
         const payment = await fetchPaymentById(resourceId);
         console.log('💳 Pago encontrado:', JSON.stringify(payment, null, 2));
+
+        // Validar que el pago sea válido (no un error 404)
+        if (!payment || payment.status === 404 || payment.error) {
+          console.log('❌ El pago no existe o no se encontró (probablemente ID simulado). Abortando.');
+          res.json({ received: true, status: 'payment_not_found' });
+          return;
+        }
 
         // 💡 Opción 1: Buscar avatar en metadata de la preferencia
         let avatarUrl = req.body?.avatarUrl || req.query?.avatarUrl || null;
