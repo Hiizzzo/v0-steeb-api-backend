@@ -109,7 +109,13 @@ export default async function handler(req, res) {
         pending: `${APP_BASE_URL}/payments/pending`,
         failure: `${APP_BASE_URL}/payments/failure`
       },
-      external_reference: externalReference
+      external_reference: externalReference,
+      // 💡 Guardar el avatar en la preferencia para que el webhook pueda acceder a él
+      metadata: {
+        avatar: req.body?.avatar || null,
+        userName: req.body?.name || null,
+        userEmail: req.body?.email || null
+      }
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);

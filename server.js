@@ -326,6 +326,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
         pending: `${APP_BASE_URL}/payments/pending`,
         failure: `${APP_BASE_URL}/payments/failure`
       },
+      payer: payer,
       // auto_return: 'approved',
       external_reference: externalReference
     };

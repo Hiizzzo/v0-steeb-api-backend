@@ -221,6 +221,19 @@ const fetchPaymentById = async (id) => {
   return await mpRequest(`/v1/payments/${id}`, { method: 'GET' });
 };
 
+const mpRequest = async (endpoint, options = {}) => {
+  const url = `https://api.mercadopago.com${endpoint}`;
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${MERCADOPAGO_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+  return await response.json();
+};
+
 export default async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -264,9 +277,24 @@ export default async function handler(req, res) {
         const payment = await fetchPaymentById(resourceId);
         console.log('💳 Pago encontrado:', JSON.stringify(payment, null, 2));
 
-        // Obtener avatar del body o query params
-        const avatarUrl = req.body?.avatarUrl || req.query?.avatarUrl || null;
-        console.log('🖼️ Avatar URL recibido:', avatarUrl || 'No avatar provided');
+        // 💡 Opción 1: Buscar avatar en metadata de la preferencia
+        let avatarUrl = req.body?.avatarUrl || req.query?.avatarUrl || null;
+
+        // Si no viene en el webhook, buscar en metadata de la preferencia
+        if (!avatarUrl && payment.preference_id) {
+          console.log('🔍 Buscando avatar en metadata de preferencia...');
+          try {
+            const preferenceData = await mpRequest(`/v1/checkout/preferences/${payment.preference_id}`, { method: 'GET' });
+            if (preferenceData.metadata?.avatar) {
+              avatarUrl = preferenceData.metadata.avatar;
+              console.log('✅ Avatar encontrado en metadata:', avatarUrl);
+            }
+          } catch (error) {
+            console.log('⚠️ Error obteniendo metadata de preferencia:', error.message);
+          }
+        }
+
+        console.log('🖼️ Avatar URL final:', avatarUrl || 'No avatar provided');
 
         await persistPaymentFromMercadoPago(payment, avatarUrl);
         console.log('✅ Webhook Mercado Pago procesado:', resourceId);
