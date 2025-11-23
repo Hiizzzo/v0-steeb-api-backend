@@ -31,5 +31,19 @@
     "permissions": ["shiny_game", "dark_mode", "premium_features", "exclusive_content"],
     "trialDays": 0,
     "mostPopular": false
+  },
+  {
+    "id": "shiny-roll-plan",
+    "title": "Tirada Shiny",
+    "description": "Intento extra para desbloquear el modo Shiny.",
+    "price": 1,
+    "currency": "ARS",
+    "tipoUsuario": "none",
+    "features": [
+      "1 intento extra para el juego Shiny"
+    ],
+    "permissions": [],
+    "trialDays": 0,
+    "mostPopular": false
   }
 ]

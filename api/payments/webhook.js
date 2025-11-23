@@ -171,9 +171,11 @@ export const processApprovedPayment = async (paymentRecord) => {
       }
     }
 
-    // 4. Determinar el tipoUsuario según el plan comprado
+    // 4. Determinar acción según el plan comprado
     let tipoUsuario = 'white'; // default
     let permissions = [];
+    let isConsumable = false;
+    let consumableQuantity = 0;
 
     switch (paymentRecord.planId) {
       case 'black-user-plan':
@@ -184,29 +186,55 @@ export const processApprovedPayment = async (paymentRecord) => {
         tipoUsuario = 'shiny';
         permissions = ['shiny_game', 'dark_mode', 'premium_features', 'exclusive_content'];
         break;
+      case 'shiny-roll-plan':
+        isConsumable = true;
+        // La cantidad viene en la preferencia, pero aquí paymentRecord.amount es el total.
+        // paymentRecord no tiene la cantidad de items directamente mapeada en mapPaymentToRecord
+        // Pero podemos inferirla o asumirla.
+        // Mejor aún, si el plan es shiny-roll-plan, asumimos que cada unidad cuesta X y calculamos,
+        // O simplemente confiamos en que el frontend mandó la cantidad correcta en la preferencia.
+        // MercadoPago payment object tiene 'additional_info.items'.
+        // Por simplicidad y robustez, vamos a asumir que 1 compra = N rolls según el monto o items.
+        // Pero mapPaymentToRecord no trae items.
+        // Vamos a asumir que quantity viene en el item de la preferencia, pero aquí es difícil acceder.
+        // HACK: Por ahora, asumimos que el precio es $1 por roll.
+        // Si pagó $15, son 15 rolls.
+        consumableQuantity = Math.floor(paymentRecord.amount || 1);
+        break;
       default:
         tipoUsuario = 'white';
         permissions = ['basic_features'];
     }
 
-    console.log(`🎨 Assigning tipoUsuario: ${tipoUsuario}`);
-
     // 5. Si encontramos al usuario, actualizarlo
     if (user) {
-      console.log(`⬆️ Updating user tipo: ${targetUserId} -> ${tipoUsuario}`);
+      if (isConsumable) {
+        console.log(`🍬 Adding consumables: ${consumableQuantity} rolls to ${targetUserId}`);
+        await db.collection('users').doc(targetUserId).update({
+          shinyRolls: admin.firestore.FieldValue.increment(consumableQuantity),
+          lastPayment: paymentRecord.paymentId,
+          lastPaymentAt: admin.firestore.FieldValue.serverTimestamp(),
+          payerId: paymentRecord.payerId || null
+        });
+        console.log(`✅ User rolls updated: +${consumableQuantity}`);
+      } else {
+        console.log(`🎨 Assigning tipoUsuario: ${tipoUsuario}`);
+        console.log(`⬆️ Updating user tipo: ${targetUserId} -> ${tipoUsuario}`);
 
-      await updateUserTipo(
-        targetUserId,
-        tipoUsuario,
-        permissions
-      );
+        await updateUserTipo(
+          targetUserId,
+          tipoUsuario,
+          permissions
+        );
 
-      // Actualizar información adicional
-      await db.collection('users').doc(targetUserId).update({
-        lastPayment: paymentRecord.paymentId,
-        lastPaymentAt: admin.firestore.FieldValue.serverTimestamp(),
-        payerId: paymentRecord.payerId || null
-      });
+        // Actualizar información adicional
+        await db.collection('users').doc(targetUserId).update({
+          lastPayment: paymentRecord.paymentId,
+          lastPaymentAt: admin.firestore.FieldValue.serverTimestamp(),
+          payerId: paymentRecord.payerId || null
+        });
+        console.log(`✅ User tipo updated: ${targetUserId} -> ${tipoUsuario}`);
+      }
 
       console.log(`✅ User tipo updated: ${targetUserId} -> ${tipoUsuario}`);
       console.log(`📧 User email: ${user.email || 'No email'}`);
