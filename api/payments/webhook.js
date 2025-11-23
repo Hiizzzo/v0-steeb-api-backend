@@ -100,11 +100,24 @@ export const processApprovedPayment = async (paymentRecord) => {
     console.log(`🆔 Original userId: ${paymentRecord.userId}`);
     console.log(`🖼️ Avatar received from frontend: ${paymentRecord.avatarUrl || 'Not provided'}`);
 
-    // 1. Primero, intentar encontrar al usuario por el avatar (método preferido)
+    // 1. Primero, intentar encontrar al usuario por el userId original (MÉTODO PRIORITARIO)
+    // Esto asegura que si yo pago con la tarjeta de mi hermano, el rango me lo den a MI usuario, no al de él.
     let user = null;
     let targetUserId = paymentRecord.userId;
 
-    if (paymentRecord.avatarUrl && paymentRecord.avatarUrl.trim() !== '') {
+    if (paymentRecord.userId && paymentRecord.userId !== 'anon') {
+      console.log(`🔍 Searching user by original userId: ${paymentRecord.userId}`);
+      user = await getUserFromFirestore(paymentRecord.userId);
+      if (user) {
+        targetUserId = paymentRecord.userId;
+        console.log(`✅ User found by userId: ${targetUserId}`);
+      } else {
+        console.log(`❌ User not found by userId: ${paymentRecord.userId}`);
+      }
+    }
+
+    // 2. Si no se encontró por userId, intentar por el avatar (fallback)
+    if (!user && paymentRecord.avatarUrl && paymentRecord.avatarUrl.trim() !== '') {
       console.log(`🔍 Searching user by avatar: ${paymentRecord.avatarUrl}`);
       const usersSnapshot = await db.collection('users')
         .where('avatar', '==', paymentRecord.avatarUrl)
@@ -121,7 +134,7 @@ export const processApprovedPayment = async (paymentRecord) => {
       }
     }
 
-    // 2. Si no se encontró por avatar, intentar por el email del payer
+    // 3. Si no se encontró por avatar, intentar por el email del payer (último recurso)
     if (!user && paymentRecord.email && paymentRecord.email !== 'anon') {
       console.log(`🔍 Searching user by email: ${paymentRecord.email}`);
       const usersSnapshot = await db.collection('users')
@@ -136,16 +149,6 @@ export const processApprovedPayment = async (paymentRecord) => {
         console.log(`🖼️ User avatar: ${user.avatar || 'No avatar'}`);
       } else {
         console.log(`❌ No user found with email: ${paymentRecord.email}`);
-      }
-    }
-
-    // 3. Si no se encontró por email, intentar por el userId original
-    if (!user && paymentRecord.userId !== 'anon') {
-      console.log(`🔍 Searching user by original userId: ${paymentRecord.userId}`);
-      user = await getUserFromFirestore(paymentRecord.userId);
-      targetUserId = paymentRecord.userId;
-      if (user) {
-        console.log(`✅ User found by userId: ${targetUserId}`);
       }
     }
 
@@ -164,7 +167,7 @@ export const processApprovedPayment = async (paymentRecord) => {
           console.log(`     Tipo: ${userData.tipoUsuario || 'white'}`);
           console.log('');
         });
-        console.log(`💡 The avatar URL from frontend needs to match one of these avatars`);
+        console.log(`💡 The userId from external_reference needs to match a user ID in Firebase`);
       }
     }
 
