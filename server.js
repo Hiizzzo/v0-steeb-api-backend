@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import 'dotenv/config';
 import { createPurchaseStore } from './server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { updateUserTipo } from './lib/firebase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -102,6 +103,23 @@ const persistPaymentFromMercadoPago = async (payment) => {
   }
   const store = await createPurchaseStore();
   await store.upsert(record);
+
+  // Update user in Firebase if approved
+  if (record.status === 'approved' && record.userId) {
+    try {
+      const targetType = record.planId.includes('shiny') ? 'shiny' : 'black';
+      const permissions = targetType === 'shiny'
+        ? ['dark_mode', 'basic_features', 'shiny_game', 'premium_features']
+        : ['dark_mode', 'basic_features'];
+
+      console.log(`🔄 Updating user ${record.userId} to ${targetType}...`);
+      await updateUserTipo(record.userId, targetType, permissions);
+    } catch (error) {
+      console.error('❌ Error updating user in Firebase:', error);
+      // Don't throw, so we still return the payment record
+    }
+  }
+
   return record;
 };
 
