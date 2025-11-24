@@ -1,49 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/health",
-      "dest": "/api/health.js"
-    },
-    {
-      "src": "/api/steeb",
-      "dest": "/api/steeb.js"
-    },
-    {
-      "src": "/api/payments/create-preference",
-      "dest": "/api/payments/create-preference.js"
-    },
-    {
-      "src": "/api/payments/verify",
-      "dest": "/api/payments/verify.js"
-    },
-    {
-      "src": "/api/payments/status",
-      "dest": "/api/payments/status.js"
-    },
-    {
-      "src": "/api/payments/webhook",
-      "dest": "/api/payments/webhook.js"
-    },
-    {
-      "src": "/api/users/role",
-      "dest": "/api/users/role.js"
-    },
-    {
-      "src": "/api/shiny-game",
-      "dest": "/api/shiny-game.js"
     }
   ]
 }
