@@ -9,6 +9,9 @@ import crypto from 'crypto';
 import 'dotenv/config';
 import { createPurchaseStore } from '../server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import shinyGameHandler from './shiny-game.js';
+import userRoleHandler from './users/role.js';
+import consumeShinyRollHandler from './users/consume-shiny-roll.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +23,16 @@ const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `https:
 // Configurar CORS y JSON
 app.use(cors());
 app.use(express.json());
+
+// Normalizar rutas si llegan con prefijo /api (cuando usamos rewrite a un solo handler)
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/api/')) {
+    req.url = req.url.replace(/^\/api/, '');
+  } else if (req.url === '/api') {
+    req.url = '/';
+  }
+  next();
+});
 
 const MERCADOPAGO_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
 const MERCADOPAGO_PUBLIC_KEY = process.env.MERCADOPAGO_PUBLIC_KEY || '';
@@ -445,5 +458,14 @@ app.get('/images', (req, res) => {
     res.status(500).json({ error: 'Error al listar imágenes' });
   }
 });
+
+// ================================
+// SHINY GAME + USERS (UNIFICADO PARA LIMITE DE FUNCIONES)
+// ================================
+
+// Reusar handlers existentes para no duplicar l��gica
+app.all('/shiny-game', (req, res) => shinyGameHandler(req, res));
+app.all('/users/role', (req, res) => userRoleHandler(req, res));
+app.all('/users/consume-shiny-roll', (req, res) => consumeShinyRollHandler(req, res));
 
 export default app;
