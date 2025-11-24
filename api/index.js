@@ -51,8 +51,10 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
   console.log('🎲 Shiny Game endpoint hit!');
   try {
     const { userId, guess } = req.body;
+    console.log(`👤 Received userId: ${userId}, guess: ${guess}`);
 
     if (!userId || guess === undefined) {
+      console.error('❌ Missing required data');
       return res.status(400).json({
         error: 'Bad request',
         message: 'Faltan datos requeridos (userId, guess)'
@@ -61,6 +63,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
 
     const guessNum = parseInt(guess, 10);
     if (isNaN(guessNum) || guessNum < 1 || guessNum > 100) {
+      console.error(`❌ Invalid guess: ${guess}`);
       return res.status(400).json({
         error: 'Invalid guess',
         message: 'El número debe ser entre 1 y 100'
@@ -68,13 +71,17 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     }
 
     // 1. Obtener usuario
+    console.log(`🔍 Fetching user from Firestore: ${userId}`);
     const user = await getUserFromFirestore(userId);
+    
     if (!user) {
+      console.error(`❌ User not found in Firestore: ${userId}`);
       return res.status(404).json({
         error: 'User not found',
-        message: 'Usuario no encontrado'
+        message: `Usuario no encontrado: ${userId}`
       });
     }
+    console.log(`✅ User found: ${user.email || 'No email'} (${user.tipoUsuario})`);
 
     // 2. Verificar permisos (Debe ser al menos DARK)
     if (user.tipoUsuario === 'shiny') {
