@@ -115,8 +115,21 @@ export default async function handler(req, res) {
     }
 
     // 4. Generar número secreto y comparar
+    // NOTA: En un juego real, el secreto debería persistir por sesión o día para no cambiar en cada intento si fuera el mismo "juego".
+    // Pero aquí cada intento es una tirada nueva.
     const secret = Math.floor(Math.random() * 100) + 1;
     const won = guessNum === secret;
+    const diff = Math.abs(guessNum - secret);
+    
+    let hint = '';
+    if (!won) {
+      if (diff <= 5) hint = '¡Uff! Estuviste MUY cerca... 🔥';
+      else if (diff <= 10) hint = 'Casi... Estás cerca. 🌡️';
+      else if (diff <= 20) hint = 'Ni frío ni calor. 😐';
+      else hint = 'Lejos, muy lejos... ❄️';
+      
+      hint += ` (Era el ${secret})`; // Revelar el número para transparencia (opcional, o quitar si se quiere más hardcore)
+    }
 
     // 5. Actualizar usuario
     const updates = {
@@ -140,7 +153,7 @@ export default async function handler(req, res) {
       success: true,
       won,
       secret,
-      message: won ? '¡GANASTE SHINY!' : 'No acertaste. ¡Intenta mañana!',
+      message: won ? '¡GANASTE SHINY! 🎉' : `No acertaste. ${hint}`,
       remainingRolls: usedExtraRoll ? (user.shinyRolls - 1) : (user.shinyRolls || 0)
     });
 
