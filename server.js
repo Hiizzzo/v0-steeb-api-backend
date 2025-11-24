@@ -10,6 +10,7 @@ import 'dotenv/config';
 import { createPurchaseStore } from './server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { updateUserTipo } from './lib/firebase.js';
+import steebHandler from './api/steeb.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -479,6 +480,10 @@ app.post('/api/payments/webhook', async (req, res) => {
     res.status(500).json({ error: 'Error procesando webhook' });
   }
 });
+
+
+// Chat AI (DeepSeek) - mismo handler que Vercel
+app.all('/api/steeb', (req, res) => steebHandler(req, res));
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor STEEB corriendo en http://localhost:${PORT}`);

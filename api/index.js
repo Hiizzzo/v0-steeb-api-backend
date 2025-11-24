@@ -12,6 +12,7 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 import shinyGameHandler from './shiny-game.js';
 import userRoleHandler from './users/role.js';
 import consumeShinyRollHandler from './users/consume-shiny-roll.js';
+import steebHandler from './steeb.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -467,5 +468,7 @@ app.get('/images', (req, res) => {
 app.all('/shiny-game', (req, res) => shinyGameHandler(req, res));
 app.all('/users/role', (req, res) => userRoleHandler(req, res));
 app.all('/users/consume-shiny-roll', (req, res) => consumeShinyRollHandler(req, res));
+// Chat AI (DeepSeek)
+app.all('/steeb', (req, res) => steebHandler(req, res));
 
 export default app;
