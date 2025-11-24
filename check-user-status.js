@@ -27,6 +27,7 @@ const checkUserStatus = async (email) => {
     console.log(`   - ID: ${userData.id}`);
     console.log(`   - Email: ${userData.email}`);
     console.log(`   - TipoUsuario: ${userData.tipoUsuario || 'white'}`);
+    console.log(`   - Shiny Rolls: ${userData.shinyRolls || 0}`);
     console.log(`   - Permisos: ${JSON.stringify(userData.permissions || [])}`);
     console.log(`   - Activo: ${userData.isActive}`);
     console.log(`   - Último pago: ${userData.lastPayment || 'Ninguno'}`);

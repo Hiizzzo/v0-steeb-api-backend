@@ -3,5 +3,19 @@
     "status": 404,
     "planId": "unknown",
     "userId": null
+  },
+  {
+    "paymentId": 123456789,
+    "status": "approved",
+    "statusDetail": "accredited",
+    "planId": "black-user-plan",
+    "userId": "testuser1763870342649",
+    "email": "payer@test.com",
+    "externalReference": "black-user-plan_testuser1763870342649_1763870344032",
+    "preferenceId": "pref_123",
+    "amount": 100,
+    "currency": "ARS",
+    "processedAt": "2025-11-23T03:59:04.032Z",
+    "approvedAt": "2025-11-23T03:59:04.032Z"
   }
 ]
