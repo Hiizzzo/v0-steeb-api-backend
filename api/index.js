@@ -34,8 +34,10 @@ app.use(express.json());
 
 // Normalizar rutas si llegan con prefijo /api (cuando usamos rewrite a un solo handler)
 app.use((req, _res, next) => {
+  console.log(`📥 Incoming request: ${req.method} ${req.url}`);
   if (req.url.startsWith('/api/')) {
     req.url = req.url.replace(/^\/api/, '');
+    console.log(`🔄 Rewritten URL: ${req.url}`);
   } else if (req.url === '/api') {
     req.url = '/';
   }
@@ -686,7 +688,8 @@ app.get('/images', (req, res) => {
 // ================================
 
 // Reusar handlers existentes para no duplicar l��gica
-app.post('/shiny-game', async (req, res) => {
+// Manejar ambas rutas por seguridad
+app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
   try {
     const { userId, guess } = req.body;
 
