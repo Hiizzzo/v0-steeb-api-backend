@@ -1,11 +1,52 @@
 // Endpoint para recibir datos del usuario después de la compra y asignar el rol correspondiente
 import 'dotenv/config';
 import { MercadoPagoConfig } from 'mercadopago';
-import { db, getUserFromFirestore, updateUserTipo, createPaymentRecord } from './lib/firebase.js';
+import { db, getUserFromFirestore, updateUserTipo, createPaymentRecord, addShinyUserToGlobalCounter, getShinyUserPosition } from '../lib/firebase.js';
 
 const MERCADOPAGO_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
 const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_ACCESS_TOKEN });
+
+// Helper function to convert numbers to Spanish ordinals
+const getOrdinal = (num) => {
+  const exceptions = {
+    1: 'primer',
+    2: 'segundo',
+    3: 'tercer',
+    4: 'cuarto',
+    5: 'quinto',
+    6: 'sexto',
+    7: 'séptimo',
+    8: 'octavo',
+    9: 'noveno',
+    10: 'décimo',
+    11: 'undécimo',
+    12: 'duodécimo'
+  };
+
+  if (exceptions[num]) {
+    return exceptions[num];
+  }
+
+  // For larger numbers, use generic ordinal
+  if (num >= 13 && num <= 19) {
+    return 'decimo' + getOrdinal(num - 10);
+  }
+
+  if (num >= 20 && num <= 29) {
+    return 'vigésimo ' + getOrdinal(num - 20);
+  }
+
+  if (num >= 30 && num <= 99) {
+    const tens = Math.floor(num / 10);
+    const units = num % 10;
+    const tensWords = ['trigésimo', 'cuadragésimo', 'quincuagésimo', 'sexagésimo', 'septuagésimo', 'octogésimo', 'nonagésimo'];
+    return tensWords[tens - 3] + (units > 0 ? ' ' + getOrdinal(units) : '');
+  }
+
+  // For simplicity beyond 100
+  return `${num}º`;
+};
 
 const mpRequest = async (endpoint, options = {}) => {
   const url = `https://api.mercadopago.com${endpoint}`;
@@ -136,7 +177,20 @@ export default async function handler(req, res) {
     console.log(`🎨 Asignando tipoUsuario: ${tipoUsuario}`);
     console.log(`🔑 Permisos: ${JSON.stringify(permissions)}`);
 
-    // 5. Buscar o crear el usuario en Firebase
+    // 5. Extraer el userId del payment para identificar al usuario
+    // Nota: Esto puede venir en el payment metadata o external_reference
+    const userId = payment.metadata?.user_id || payment.description?.split('ID:')[1] || 'unknown';
+
+    if (userId === 'unknown') {
+      console.error('❌ No se pudo identificar el usuario del pago');
+      return res.status(400).json({
+        success: false,
+        error: 'User identification failed',
+        message: 'No se pudo identificar al usuario del pago'
+      });
+    }
+
+    // 6. Buscar o crear el usuario en Firebase
     console.log(`\n🔍 Buscando usuario en Firebase: ${userId}`);
     let user = await getUserFromFirestore(userId);
 
@@ -180,7 +234,50 @@ export default async function handler(req, res) {
       console.log(`✅ Usuario actualizado exitosamente`);
     }
 
-    // 6. Guardar el registro del pago
+    // 7. Si es un usuario shiny, agregar al contador global
+    let shinyStats = null;
+    let congratulationMessage = null;
+
+    if (tipoUsuario === 'shiny') {
+      console.log(`🌟 Agregando usuario al contador global shiny...`);
+
+      try {
+        // Verificar si ya es shiny para evitar duplicados
+        const existingPosition = await getShinyUserPosition(userId);
+
+        if (!existingPosition) {
+          // Es un nuevo usuario shiny
+          shinyStats = await addShinyUserToGlobalCounter(
+            userId,
+            userName || user?.displayName || null,
+            userAvatar || user?.avatar || null
+          );
+
+          // Generar mensaje de felicitación según posición
+          const position = shinyStats.position;
+          const ordinal = getOrdinal(position);
+
+          congratulationMessage = `¡FELICIDADES! 🎉 ${userName || ' crack'} sos ${ordinal} usuario en conseguir SHINY mode en todo STEEB. ¡Sos parte de un club exclusivo de solo ${shinyStats.totalShinyUsers} personas! ✨`;
+
+          console.log(`✅ Usuario agregado al contador global. Posición: ${position}/${shinyStats.totalShinyUsers}`);
+          console.log(`🎉 Mensaje de felicitación: ${congratulationMessage}`);
+        } else {
+          // Ya era shiny previamente
+          congratulationMessage = `¡Ya eres parte del club SHINY! 🌟 Fuiste el ${getOrdinal(existingPosition.position)} usuario en desbloquearlo.`;
+          shinyStats = {
+            position: existingPosition.position,
+            totalShinyUsers: existingPosition.totalShinyUsers
+          };
+
+          console.log(`ℹ️ Usuario ya era shiny. Posición existente: ${existingPosition.position}/${existingPosition.totalShinyUsers}`);
+        }
+      } catch (error) {
+        console.error('❌ Error al agregar usuario al contador global shiny:', error);
+        // Continuar con el proceso aunque falle el contador
+      }
+    }
+
+    // 8. Guardar el registro del pago
     console.log(`\n💾 Guardando registro del pago...`);
     await createPaymentRecord({
       id: paymentId,
@@ -194,10 +291,12 @@ export default async function handler(req, res) {
 
     console.log(`✅ Registro del pago guardado`);
 
-    // 7. Responder con éxito
+    // 9. Responder con éxito
     const response = {
       success: true,
-      message: 'Usuario actualizado exitosamente',
+      message: tipoUsuario === 'shiny' && congratulationMessage
+        ? congratulationMessage
+        : 'Usuario actualizado exitosamente',
       data: {
         userId: userId,
         userEmail: userEmail,
@@ -213,7 +312,16 @@ export default async function handler(req, res) {
         timestamp: new Date().toISOString(),
         paymentProcessed: true,
         userRoleUpdated: true
-      }
+      },
+      // Agregar información shiny si aplica
+      ...(shinyStats && {
+        shinyStats: {
+          position: shinyStats.position,
+          totalShinyUsers: shinyStats.totalShinyUsers,
+          isExclusive: shinyStats.totalShinyUsers <= 10, // Es exclusivo si hay 10 o menos
+          message: congratulationMessage
+        }
+      })
     };
 
     console.log(`\n🎉 ¡PROCESO COMPLETADO!`);

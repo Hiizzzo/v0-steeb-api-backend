@@ -29,6 +29,7 @@ ACCIONES DISPONIBLES (elige las que apliquen):
 6. BUY_SHINY_ROLLS ? cuando quiera comprar tiradas. payload con { "planId": "shiny-roll-15" }.
 7. PLAY_SHINY_GAME ? cuando quiera jugar al modo shiny.
 8. SHOW_MOTIVATION ? cuando necesite motivaci?n extra. payload opcional con { "note": "..." }.
+9. GET_SHINY_STATS ? cuando pregunte sobre cuántos usuarios shiny hay o su posición. payload opcional con { "userId": "..." }.
 
 FORMATO DE RESPUESTA (OBLIGATORIO):
 Responde EXCLUSIVAMENTE en JSON v?lido. Nunca agregues texto fuera del JSON.
@@ -63,7 +64,8 @@ const ACTION_TYPES = new Set([
   'BUY_DARK_MODE',
   'BUY_SHINY_ROLLS',
   'PLAY_SHINY_GAME',
-  'SHOW_MOTIVATION'
+  'SHOW_MOTIVATION',
+  'GET_SHINY_STATS'
 ]);
 
 const sanitizeAction = (action) => {

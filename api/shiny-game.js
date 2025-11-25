@@ -1,5 +1,46 @@
-import { db, getUserFromFirestore } from '../lib/firebase.js';
+import { db, getUserFromFirestore, addShinyUserToGlobalCounter, getShinyUserPosition } from '../lib/firebase.js';
 import admin from 'firebase-admin';
+
+// Helper function to convert numbers to Spanish ordinals
+const getOrdinal = (num) => {
+  const exceptions = {
+    1: 'primer',
+    2: 'segundo',
+    3: 'tercer',
+    4: 'cuarto',
+    5: 'quinto',
+    6: 'sexto',
+    7: 'séptimo',
+    8: 'octavo',
+    9: 'noveno',
+    10: 'décimo',
+    11: 'undécimo',
+    12: 'duodécimo'
+  };
+
+  if (exceptions[num]) {
+    return exceptions[num];
+  }
+
+  // For larger numbers, use generic ordinal
+  if (num >= 13 && num <= 19) {
+    return 'decimo' + getOrdinal(num - 10);
+  }
+
+  if (num >= 20 && num <= 29) {
+    return 'vigésimo ' + getOrdinal(num - 20);
+  }
+
+  if (num >= 30 && num <= 99) {
+    const tens = Math.floor(num / 10);
+    const units = num % 10;
+    const tensWords = ['trigésimo', 'cuadragésimo', 'quincuagésimo', 'sexagésimo', 'septuagésimo', 'octogésimo', 'nonagésimo'];
+    return tensWords[tens - 3] + (units > 0 ? ' ' + getOrdinal(units) : '');
+  }
+
+  // For simplicity beyond 100
+  return `${num}º`;
+};
 
 export default async function handler(req, res) {
   try {
@@ -149,13 +190,65 @@ export default async function handler(req, res) {
 
     await db.collection('users').doc(userId).update(updates);
 
-    // 6. Responder
+    // 6. Si ganó, agregar al contador global shiny
+    let shinyStats = null;
+    let finalMessage = won ? '¡GANASTE SHINY! 🎉' : `No acertaste. ${hint}`;
+
+    if (won) {
+      console.log(`🌟 Usuario ganó el juego shiny, agregando al contador global...`);
+
+      try {
+        // Verificar si ya es shiny para evitar duplicados
+        const existingPosition = await getShinyUserPosition(userId);
+
+        if (!existingPosition) {
+          // Es un nuevo usuario shiny
+          shinyStats = await addShinyUserToGlobalCounter(
+            userId,
+            user.displayName || user.email || 'Usuario Anónimo',
+            user.avatar || null
+          );
+
+          // Generar mensaje de felicitación según posición
+          const position = shinyStats.position;
+          const ordinal = getOrdinal(position);
+
+          finalMessage = `¡¡¡GANASTE SHINY!!! 🎉🎉🎉 ¡SOS el ${ordinal} usuario en conseguir SHINY mode en todo STEEB! ¡Pertenecés a un club exclusivo de solo ${shinyStats.totalShinyUsers} personas! ✨🌟`;
+
+          console.log(`✅ Usuario agregado al contador global. Posición: ${position}/${shinyStats.totalShinyUsers}`);
+          console.log(`🎉 Mensaje de felicitación: ${finalMessage}`);
+        } else {
+          // Ya era shiny previamente (raro caso pero posible)
+          finalMessage = `¡Ya eres parte del club SHINY! 🌟 Ganaste, pero ya eras el ${getOrdinal(existingPosition.position)} usuario en desbloquearlo.`;
+          shinyStats = {
+            position: existingPosition.position,
+            totalShinyUsers: existingPosition.totalShinyUsers
+          };
+
+          console.log(`ℹ️ Usuario ya era shiny. Posición existente: ${existingPosition.position}/${existingPosition.totalShinyUsers}`);
+        }
+      } catch (error) {
+        console.error('❌ Error al agregar usuario al contador global shiny:', error);
+        // Continuar con el proceso aunque falle el contador
+      }
+    }
+
+    // 7. Responder
     return res.json({
       success: true,
       won,
       secret,
-      message: won ? '¡GANASTE SHINY! 🎉' : `No acertaste. ${hint}`,
-      remainingRolls: usedExtraRoll ? (user.shinyRolls - 1) : (user.shinyRolls || 0)
+      message: finalMessage,
+      remainingRolls: usedExtraRoll ? (user.shinyRolls - 1) : (user.shinyRolls || 0),
+      // Agregar información shiny si ganó
+      ...(shinyStats && {
+        shinyStats: {
+          position: shinyStats.position,
+          totalShinyUsers: shinyStats.totalShinyUsers,
+          isExclusive: shinyStats.totalShinyUsers <= 10, // Es exclusivo si hay 10 o menos
+          isNewShiny: true
+        }
+      })
     });
 
   } catch (error) {
