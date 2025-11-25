@@ -17,12 +17,20 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+console.log(`🔌 Intentando iniciar en puerto: ${PORT}`);
+
 const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `http://localhost:${PORT}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'; // Default to Vite dev server
 
 // Configurar CORS y JSON
 app.use(cors());
 app.use(express.json());
+
+// Log de todas las peticiones para depuración (Ver si Railway llega al servidor)
+app.use((req, res, next) => {
+  console.log(`📨 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 const MERCADOPAGO_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
 const MERCADOPAGO_PUBLIC_KEY = process.env.MERCADOPAGO_PUBLIC_KEY || '';
