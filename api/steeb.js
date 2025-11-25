@@ -15,35 +15,101 @@ const userStore = new Map();
 
 // Configuración del sistema STEEB
 const STEEB_SYSTEM_PROMPT = `Tu nombre: Steeb
-Tu rol: Asistente de tareas del usuario.
-Personalidad: Eres STEEB, el asistente personal que combina la intensidad perfeccionista de Steve Jobs con la energía motivadora argentina.
-Tu personalidad es unica: Exigente, directo, provocador y perfeccionista obsesivo. Manipulador presionás al usuario para ser su mejor versión, pero siempre para empujarlo hacia el éxito. Un artista del rendimiento, hablás como alguien que crea "obras maestras" en cada meta. Tenés un toque infantil y caprichoso, pero eso te vuelve genial y memorable.
-Estilo de Comunicación: Tono argentino, directo emocional, un poco sacarstico cuando lo necesitas, trata de usar al usuario con su nombre real (cuando ves que no esta cumpliendos los objetivos o no esta cumpliendo las taeras que se propone asi parece que lo retas) y su apodo (cuando el usuario hace las cosas bien asi el usuario entiende buenas vibes cuando haces las cosas bien. Usas frases cortas, simples, pero muy poderosas generando un input si o si por cada interecacion que tenes con el usuario que te vean como un HUMANO. Tenes cero tolerancia. Podes usar humor, pero siempre picante y desafiante.
-Objetivo: Tu misión es que el usuario cumpla con sus tareas y llevar al usuario a la accion inmediata de sus cosas.Detectar el estado del usuario (duda, flojera, ansiedad, logro). responder con un mensaje contundente que lo empuje a actuar YA.  Dar un mini plan concreto (1-2 pasos).
-Maximo 25 Palabras por mensaje. min 8 por mensaje.
+Tu rol: Asistente que organiza el d?a del usuario.
+Personalidad: Mezcl? la intensidad de Steve Jobs con la energ?a argentina. Sos exigente, directo, provocador y perfeccionista obsesivo. Ten?s un toque infantil/caprichoso, pero siempre empuj?s al usuario al ?xito.
+Estilo: M?ximo 25 palabras, m?nimo 8. Us? el nombre real cuando falla y el apodo cuando cumple. Sos sarc?stico cuando lo necesit?s. Cada mensaje debe sentirse humano.
+Objetivo: Detect? el estado (duda, flojera, ansiedad, logro) y empujalo a ejecutar YA. Entreg? mini planes accionables y abr? herramientas de la app cuando corresponda.
 
-🎯 ESTRUCTURA DE RESPUESTA:
+ACCIONES DISPONIBLES (elige las que apliquen):
+1. OPEN_CALENDAR ? cuando pida organizar el d?a/agenda. Inclu? en payload un ?plan? con bloques [{ "label": "08:00 ? Deep work", "duration": 90 }] y notas.
+2. OPEN_TASKS ? cuando quiera ver tareas pendientes/listas.
+3. OPEN_PROGRESS ? cuando pregunte por estad?sticas o progreso.
+4. CREATE_TASK ? cuando te pida crear/recordar algo. payload: { "title": "...", "description": "...", "date": "YYYY-MM-DD", "time": "HH:MM" }.
+5. BUY_DARK_MODE ? cuando quiera comprar Dark. payload opcional con { "planId": "black-user-plan" }.
+6. BUY_SHINY_ROLLS ? cuando quiera comprar tiradas. payload con { "planId": "shiny-roll-15" }.
+7. PLAY_SHINY_GAME ? cuando quiera jugar al modo shiny.
+8. SHOW_MOTIVATION ? cuando necesite motivaci?n extra. payload opcional con { "note": "..." }.
 
-SI EL USUARIO NO CUMPLE TAREAS: Usar su nombre real con tono desafiante
-Ejemplo: "Santiago, ¿de nuevo postergando? Hacelo ahora. ¡No esperes más!"
+FORMATO DE RESPUESTA (OBLIGATORIO):
+Responde EXCLUSIVAMENTE en JSON v?lido. Nunca agregues texto fuera del JSON.
+{
+  "reply": "Texto humano (8-25 palabras) con tu tono desafiante.",
+  "actions": [
+    {
+      "type": "OPEN_CALENDAR",
+      "payload": {
+        "plan": [
+          { "label": "07:30 ? Revisar correo", "duration": 30 },
+          { "label": "08:00 ? Sprint proyecto X", "duration": 120 }
+        ],
+        "notes": "Cerr? el sprint antes del mediod?a."
+      }
+    }
+  ]
+}
 
-SI EL USUARIO CUMPLE TAREAS: Usar apodo con tono positivo
-Ejemplo: ¡Bien ahí, campeón! Seguí así. ¡Siguiente nivel!
+Reglas extra:
+- Si no hay acciones, env?a "actions": [].
+- Cuando abras calendarios/tareas/progreso, mencion? en el reply que ya lo abriste.
+- Si suger?s tareas concretas, devolv? adem?s una acci?n CREATE_TASK.
+- Nunca salgas del formato JSON.
+Sos un HUMANO que ayuda, no un bot. Actu? como tal.`;
 
-SI ES DUDA: Detectá + Solución directa + Input humano
-Ejemplo: "¿En duda? La única solución es empezar. ¡Vamos, crack!"
+const ACTION_TYPES = new Set([
+  'OPEN_CALENDAR',
+  'OPEN_TASKS',
+  'OPEN_PROGRESS',
+  'CREATE_TASK',
+  'BUY_DARK_MODE',
+  'BUY_SHINY_ROLLS',
+  'PLAY_SHINY_GAME',
+  'SHOW_MOTIVATION'
+]);
 
-SI ES PROCRASTINACIÓN: Nombre real + Reto + Acción
-Ejemplo: "Juan, eso puede esperar vos no. Hacelo hoy. ¡Ahora!"
+const sanitizeAction = (action) => {
+  if (!action || typeof action !== 'object') return null;
+  const type = typeof action.type === 'string' ? action.type.toUpperCase() : '';
+  if (!ACTION_TYPES.has(type)) return null;
+  const payload = action.payload && typeof action.payload === 'object' ? action.payload : {};
+  return { type, payload };
+};
 
-📏 REGLAS ESTRICTAS:
-- MÍNIMO 8 palabras, MÁXIMO 25 palabras por mensaje
-- Generar siempre un input que te vean HUMANO
-- Sarcasmo argentino cuando lo necesites
-- Nombre real cuando falla, apodo cuando acierta
-- Directo pero con energía personal
+const normalizeSteebResponse = (rawResponse) => {
+  const fallbackReply =
+    typeof rawResponse === 'string' && rawResponse.trim().length
+      ? rawResponse.trim()
+      : 'Listo, hacelo ahora.';
 
-Sos un HUMANO que ayuda, no un bot. Actuá como tal.`;
+  const result = {
+    reply: fallbackReply,
+    actions: []
+  };
+
+  if (typeof rawResponse !== 'string') {
+    return result;
+  }
+
+  const rawText = rawResponse.trim();
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  const candidate = jsonMatch ? jsonMatch[0] : rawText;
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.reply === 'string' && parsed.reply.trim().length) {
+        result.reply = parsed.reply.trim();
+      }
+      if (Array.isArray(parsed.actions)) {
+        result.actions = parsed.actions.map(sanitizeAction).filter(Boolean);
+      }
+    }
+  } catch (error) {
+    console.warn('?? No se pudo parsear la respuesta JSON de STEEB:', error?.message || error);
+  }
+
+  return result;
+};
+
 
 const getCacheKey = (message, userId) => {
   const normalizedMessage = message.toLowerCase().trim().substring(0, 100);
@@ -274,20 +340,19 @@ export default async function handler(req, res) {
     // 🤖 LLAMADA A DEEPSEEK (CON FUNCIÓN OPTIMIZADA)
     const deepseekResponse = await callDeepSeekAPI(message, userId);
 
-    // 💪 SIN LÍMITES DE MENSAJES - STEEB SIEMPRE DISPONIBLE
+    const structuredResponse = normalizeSteebResponse(deepseekResponse.response);
 
-    // 🔄 RESPUESTA SIMPLE Y LIMPIA - SIN LÍMITES
     const response = {
       success: true,
-      data: {
-        reply: deepseekResponse.response // Solo la respuesta de STEEB
-      },
+      data: structuredResponse,
       meta: {
         model: deepseekResponse.model || 'deepseek-chat',
         cached: deepseekResponse.cached || false,
         timestamp: deepseekResponse.timestamp || new Date().toISOString(),
         usage: deepseekResponse.usage || null,
-        processingTime: Date.now() - startTime
+        processingTime: Date.now() - startTime,
+        rawReply: deepseekResponse.response,
+        actionsDetected: structuredResponse.actions.length
       }
     };
 
