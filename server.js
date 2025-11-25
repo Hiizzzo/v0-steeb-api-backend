@@ -29,6 +29,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:8083',
+    'http://127.0.0.1:8083',
     'https://steeb.vercel.app',
     'https://v0-steeb-api-backend-production.up.railway.app',
     FRONTEND_URL
