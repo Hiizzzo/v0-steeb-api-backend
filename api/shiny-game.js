@@ -88,10 +88,10 @@ export default async function handler(req, res) {
     }
 
     const guessNum = parseInt(guess, 10);
-    if (isNaN(guessNum) || guessNum < 1 || guessNum > 100) {
+    if (isNaN(guessNum) || guessNum < 1 || guessNum > 2) {
       return res.status(400).json({
         error: 'Invalid guess',
-        message: 'El número debe ser entre 1 y 100'
+        message: 'El número debe ser entre 1 y 2'
       });
     }
 
@@ -159,7 +159,7 @@ export default async function handler(req, res) {
     // 4. Generar número secreto y comparar
     // NOTA: En un juego real, el secreto debería persistir por sesión o día para no cambiar en cada intento si fuera el mismo "juego".
     // Pero aquí cada intento es una tirada nueva.
-    const secret = Math.floor(Math.random() * 100) + 1;
+    const secret = Math.floor(Math.random() * 2) + 1;
     const won = guessNum === secret;
     const diff = Math.abs(guessNum - secret);
     
