@@ -520,10 +520,13 @@ app.post('/api/payments/webhook', async (req, res) => {
 // Chat AI (DeepSeek) - mismo handler que Vercel
 app.all('/api/steeb', (req, res) => steebHandler(req, res));
 
-// Endpoint raíz para Health Checks de Railway
+// Endpoint raíz para Health Checks de Railway (y cualquier otra ruta no definida para evitar 404 en health checks)
 app.get('/', (req, res) => {
   res.status(200).send('✅ STEEB API Backend is running');
 });
+
+// Fallback para Health Checks agresivos de Railway que busquen /health o similar
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor STEEB corriendo en http://0.0.0.0:${PORT}`);
