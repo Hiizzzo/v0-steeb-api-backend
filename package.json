@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "vercel-build": "echo 'API-only project - no build step required'",
-    "build": "echo 'API-only project - no build step required'"
+    "build": "echo 'API-only project - no build step required'",
+    "dev": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
