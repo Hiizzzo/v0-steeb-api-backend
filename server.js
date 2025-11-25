@@ -534,6 +534,16 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`📁 Directorio de uploads: ${path.join(__dirname, 'public', 'lovable-uploads')}`);
 });
 
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Error fatal: El puerto ${PORT} ya está en uso.`);
+    process.exit(1);
+  } else {
+    console.error('❌ Error fatal al iniciar el servidor:', error);
+    process.exit(1);
+  }
+});
+
 // Graceful Shutdown para evitar errores en logs al reiniciar
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM recibido. Cerrando servidor...');
