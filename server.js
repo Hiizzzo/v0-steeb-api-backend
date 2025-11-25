@@ -154,6 +154,11 @@ export const persistPaymentFromMercadoPago = async (payment) => {
   };
 
   const store = await createPurchaseStore();
+  
+  // Verificar si el pago ya fue procesado para evitar duplicados (Idempotencia)
+  const existingPayment = await store.getByPaymentId(record.paymentId);
+  const isAlreadyApproved = existingPayment && existingPayment.status === 'approved';
+  
   await store.upsert(record);
 
   // Guardar respaldo en Firestore (Persistencia real para Railway)
@@ -164,8 +169,8 @@ export const persistPaymentFromMercadoPago = async (payment) => {
     // No fallamos todo el proceso si falla el backup en Firestore, pero lo logueamos
   }
 
-  // Update user in Firebase if approved
-  if (record.status === 'approved' && record.userId) {
+  // Update user in Firebase if approved AND not already processed
+  if (record.status === 'approved' && record.userId && !isAlreadyApproved) {
     try {
       // Lógica diferenciada para planes de suscripción vs paquetes de rolls
       if (record.planId.includes('shiny-roll')) {
