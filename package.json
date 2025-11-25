@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "vercel-build": "echo 'API-only project - no build step required'",
     "build": "echo 'API-only project - no build step required'"
   },

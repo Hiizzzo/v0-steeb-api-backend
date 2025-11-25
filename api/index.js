@@ -99,18 +99,20 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
       });
     }
 
-    // 3. Verificar límite diario
+    // 3. Verificar límite diario (24 horas exactas)
     const now = new Date();
     const lastAttempt = user.lastShinyAttemptAt ? user.lastShinyAttemptAt.toDate() : null;
     
     let canPlay = true;
+    let msUntilNextAttempt = 0;
+
     if (lastAttempt) {
-      const isToday = lastAttempt.getDate() === now.getDate() &&
-                      lastAttempt.getMonth() === now.getMonth() &&
-                      lastAttempt.getFullYear() === now.getFullYear();
+      const diffMs = now.getTime() - lastAttempt.getTime();
+      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
       
-      if (isToday) {
+      if (diffMs < twentyFourHoursMs) {
         canPlay = false;
+        msUntilNextAttempt = twentyFourHoursMs - diffMs;
       }
     }
 
@@ -121,16 +123,14 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
         canPlay = true;
         usedExtraRoll = true;
       } else {
-        // Calcular tiempo restante
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
-        const msUntilTomorrow = tomorrow - now;
+        // Calcular tiempo restante formateado
+        const hours = Math.floor(msUntilNextAttempt / (1000 * 60 * 60));
+        const minutes = Math.floor((msUntilNextAttempt % (1000 * 60 * 60)) / (1000 * 60));
         
         return res.status(429).json({
           error: 'Daily limit reached',
-          message: 'Ya usaste tu intento diario.',
-          nextAttemptIn: msUntilTomorrow
+          message: `Ya usaste tu intento diario. Podrás jugar de nuevo en ${hours}h ${minutes}m.`,
+          nextAttemptIn: msUntilNextAttempt
         });
       }
     }
@@ -392,7 +392,9 @@ const processApprovedPayment = async (paymentRecord) => {
         console.log(`✅ User tipo updated: ${targetUserId} -> ${tipoUsuario}`);
       }
 
-      console.log(`✅ User tipo updated: ${targetUserId} -> ${tipoUsuario}`);
+      if (!isConsumable) {
+        console.log(`✅ User tipo updated: ${targetUserId} -> ${tipoUsuario}`);
+      }
       console.log(`📧 User email: ${user.email || 'No email'}`);
 
     } else {
