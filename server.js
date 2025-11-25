@@ -25,7 +25,18 @@ const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `http:/
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'; // Default to Vite dev server
 
 // Configurar CORS y JSON
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://steeb.vercel.app',
+    'https://v0-steeb-api-backend-production.up.railway.app',
+    FRONTEND_URL
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Log de todas las peticiones para depuración (Ver si Railway llega al servidor)
