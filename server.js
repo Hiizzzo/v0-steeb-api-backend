@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import 'dotenv/config';
 import { createPurchaseStore } from './server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { updateUserTipo } from './lib/firebase.js';
+import { updateUserTipo, createPaymentRecord } from './lib/firebase.js';
 import steebHandler from './api/steeb.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -111,6 +111,14 @@ export const persistPaymentFromMercadoPago = async (payment) => {
   }
   const store = await createPurchaseStore();
   await store.upsert(record);
+
+  // Guardar respaldo en Firestore (Persistencia real para Railway)
+  try {
+    await createPaymentRecord(record);
+  } catch (error) {
+    console.error('⚠️ Error guardando respaldo de pago en Firestore:', error);
+    // No fallamos todo el proceso si falla el backup en Firestore, pero lo logueamos
+  }
 
   // Update user in Firebase if approved
   if (record.status === 'approved' && record.userId) {
@@ -485,8 +493,22 @@ app.post('/api/payments/webhook', async (req, res) => {
 // Chat AI (DeepSeek) - mismo handler que Vercel
 app.all('/api/steeb', (req, res) => steebHandler(req, res));
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor STEEB corriendo en http://localhost:${PORT}`);
+// Endpoint raíz para Health Checks de Railway
+app.get('/', (req, res) => {
+  res.status(200).send('✅ STEEB API Backend is running');
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor STEEB corriendo en http://0.0.0.0:${PORT}`);
   console.log(`💰 Plan configurado: ${PAYMENT_PLANS[0]?.price} ARS`);
   console.log(`📁 Directorio de uploads: ${path.join(__dirname, 'public', 'lovable-uploads')}`);
+});
+
+// Graceful Shutdown para evitar errores en logs al reiniciar
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM recibido. Cerrando servidor...');
+  server.close(() => {
+    console.log('✅ Servidor cerrado correctamente.');
+    process.exit(0);
+  });
 });
