@@ -109,12 +109,35 @@ export const persistPaymentFromMercadoPago = async (payment) => {
   if (!record) {
     throw new Error('Pago no encontrado en Mercado Pago');
   }
+  
+  // Asegurar que el ID sea un string válido para Firestore
+  if (record.paymentId) {
+    record.paymentId = String(record.paymentId);
+  }
+  // Si por alguna razón no hay paymentId, usar el ID del objeto payment original
+  if (!record.paymentId && payment.id) {
+    record.paymentId = String(payment.id);
+  }
+
+  // Validación final antes de intentar guardar
+  if (!record.paymentId) {
+    console.error('❌ Error crítico: No se pudo determinar un ID de pago válido para Firestore', record);
+    // Generar un ID de respaldo si es absolutamente necesario para no perder la data
+    record.paymentId = `backup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Mapear 'paymentId' a 'id' para createPaymentRecord que espera 'id'
+  const firestoreRecord = {
+    ...record,
+    id: record.paymentId // createPaymentRecord usa .doc(paymentData.id)
+  };
+
   const store = await createPurchaseStore();
   await store.upsert(record);
 
   // Guardar respaldo en Firestore (Persistencia real para Railway)
   try {
-    await createPaymentRecord(record);
+    await createPaymentRecord(firestoreRecord);
   } catch (error) {
     console.error('⚠️ Error guardando respaldo de pago en Firestore:', error);
     // No fallamos todo el proceso si falla el backup en Firestore, pero lo logueamos
