@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import 'dotenv/config';
 import { createPurchaseStore } from './server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { updateUserTipo, createPaymentRecord } from './lib/firebase.js';
+import { updateUserTipo, createPaymentRecord, addShinyRolls } from './lib/firebase.js';
 import steebHandler from './api/steeb.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -167,13 +167,26 @@ export const persistPaymentFromMercadoPago = async (payment) => {
   // Update user in Firebase if approved
   if (record.status === 'approved' && record.userId) {
     try {
-      const targetType = record.planId.includes('shiny') ? 'shiny' : 'black';
-      const permissions = targetType === 'shiny'
-        ? ['dark_mode', 'basic_features', 'shiny_game', 'premium_features']
-        : ['dark_mode', 'basic_features'];
+      // Lógica diferenciada para planes de suscripción vs paquetes de rolls
+      if (record.planId.includes('shiny-roll')) {
+        // Es una compra de rolls
+        let rollsToAdd = 1;
+        if (record.planId.includes('30')) rollsToAdd = 30;
+        else if (record.planId.includes('15')) rollsToAdd = 15;
+        else if (record.planId.includes('5')) rollsToAdd = 5;
+        
+        console.log(`🎲 Adding ${rollsToAdd} shiny rolls to user ${record.userId}...`);
+        await addShinyRolls(record.userId, rollsToAdd);
+      } else {
+        // Es una suscripción (Black o Shiny)
+        const targetType = record.planId.includes('shiny') ? 'shiny' : 'black';
+        const permissions = targetType === 'shiny'
+          ? ['dark_mode', 'basic_features', 'shiny_game', 'premium_features']
+          : ['dark_mode', 'basic_features'];
 
-      console.log(`🔄 Updating user ${record.userId} to ${targetType}...`);
-      await updateUserTipo(record.userId, targetType, permissions);
+        console.log(`🔄 Updating user ${record.userId} to ${targetType}...`);
+        await updateUserTipo(record.userId, targetType, permissions);
+      }
     } catch (error) {
       console.error('❌ Error updating user in Firebase:', error);
       // Don't throw, so we still return the payment record
