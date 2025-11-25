@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
 const app = express();
 // IMPORTANTE: Railway inyecta el puerto en process.env.PORT. Debemos usarlo si existe.
 // Si no existe, usamos 3000 como fallback.
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 console.log(`🔌 Intentando iniciar en puerto: ${PORT} (process.env.PORT es: ${process.env.PORT})`);
 
 const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `http://localhost:${PORT}`;
