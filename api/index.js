@@ -10,6 +10,7 @@ import 'dotenv/config';
 import { createPurchaseStore } from '../server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import shinyGameHandler from './shiny-game.js';
+import shinyStatsHandler from './shiny-stats.js';
 import userRoleHandler from './users/role.js';
 import consumeShinyRollHandler from './users/consume-shiny-roll.js';
 import steebHandler from './steeb.js';
@@ -963,6 +964,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
 });
 app.all('/users/role', (req, res) => userRoleHandler(req, res));
 app.all('/users/consume-shiny-roll', (req, res) => consumeShinyRollHandler(req, res));
+app.all(['/shiny-stats', '/api/shiny-stats'], (req, res) => shinyStatsHandler(req, res));
 // Chat AI (DeepSeek)
 app.all('/steeb', (req, res) => steebHandler(req, res));
 
