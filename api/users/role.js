@@ -84,7 +84,12 @@ export default async function handler(req, res) {
         permissions: user.permissions,
         isActive: user.isActive,
         lastPayment: user.lastPayment,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt,
+        shinyRolls: user.shinyRolls || 0,
+        darkClubNumber: user.darkClubNumber || null,
+        darkModeUnlockedAt: user.darkModeUnlockedAt || null,
+        darkModeEnabled: user.darkModeEnabled ?? false,
+        darkWelcomeMessageVersion: user.darkWelcomeMessageVersion || null
       },
       meta: {
         timestamp: new Date().toISOString(),
