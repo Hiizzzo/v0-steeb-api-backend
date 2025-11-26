@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import 'dotenv/config';
 import { createPurchaseStore } from './server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { startGlobalStatsWatcher } from './lib/globalStatsWatcher.js';
 import { updateUserTipo, createPaymentRecord, addShinyRolls } from './lib/firebase.js';
 import steebHandler from './api/steeb.js';
 import shinyGameHandler from './api/shiny-game.js';
@@ -24,6 +25,10 @@ console.log(`🔌 Intentando iniciar en puerto: ${PORT} (process.env.PORT es: ${
 
 const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `http://localhost:${PORT}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'; // Default to Vite dev server
+
+startGlobalStatsWatcher().catch((error) => {
+  console.error('[GlobalStats] Failed to start watcher', error);
+});
 
 // Configurar CORS y JSON
 app.use(cors({
