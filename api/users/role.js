@@ -87,6 +87,7 @@ export default async function handler(req, res) {
         updatedAt: user.updatedAt,
         shinyRolls: user.shinyRolls || 0,
         darkClubNumber: user.darkClubNumber || null,
+        darkClubNickname: user.darkClubNickname || null,
         darkModeUnlockedAt: user.darkModeUnlockedAt || null,
         darkModeEnabled: user.darkModeEnabled ?? false,
         darkWelcomeMessageVersion: user.darkWelcomeMessageVersion || null
