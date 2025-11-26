@@ -4,6 +4,19 @@ Este proyecto es el backend seguro para la app móvil STEEB, desplegado en Verce
 
 ## 🚀 Instrucciones de Despliegue
 
+### 🏎️ Deploy rápido para conectar con el frontend
+1. **Sube el backend a GitHub** (o actualiza el repo existente).
+2. **Impórtalo en Vercel** y, en la pantalla inicial, carga estas variables:
+   - `DEEPSEEK_API_KEY` (obligatoria)
+   - `APP_BASE_URL` / `BASE_URL` con el dominio que te dará Vercel (ej: `https://tu-backend.vercel.app`)
+   - `MP_NOTIFICATION_URL` apuntando a `https://tu-backend.vercel.app/api/payments/webhook`
+3. **Haz deploy** y copia la URL resultante (`https://tu-backend.vercel.app`).
+4. En tu frontend (React/Expo), configura el endpoint de la API en `.env` o en una constante:
+   ```bash
+   VITE_API_URL=https://tu-backend.vercel.app
+   ```
+5. Prueba el flujo real llamando a `https://tu-backend.vercel.app/api/steeb` desde el frontend. Si responde 200, ya están conectados.
+
 ### 1. Subir a GitHub
 Crea un repositorio en GitHub y sube este código.
 
