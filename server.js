@@ -200,6 +200,16 @@ export const persistPaymentFromMercadoPago = async (payment) => {
 
         console.log(`🔄 Updating user ${record.userId} to ${targetType}...`);
         await updateUserTipo(record.userId, targetType, permissions);
+
+        // Bonificación: dar 1 tirada shiny gratis al convertirse en usuario Black
+        if (targetType === 'black') {
+          try {
+            console.log(`🎁 Granting welcome shiny roll to new Black user ${record.userId}`);
+            await addShinyRolls(record.userId, 1);
+          } catch (bonusError) {
+            console.error('⚠️ Error adding welcome shiny roll:', bonusError);
+          }
+        }
       }
     } catch (error) {
       console.error('❌ Error updating user in Firebase:', error);
