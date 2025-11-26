@@ -11,6 +11,7 @@ import { createPurchaseStore } from './server/purchaseStore.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { updateUserTipo, createPaymentRecord, addShinyRolls } from './lib/firebase.js';
 import steebHandler from './api/steeb.js';
+import shinyGameHandler from './api/shiny-game.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,6 +30,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:8080',
     'http://localhost:8083',
     'http://127.0.0.1:8083',
     'https://steeb.vercel.app',
@@ -560,6 +562,9 @@ app.post('/api/payments/webhook', async (req, res) => {
 
 // Chat AI (DeepSeek) - mismo handler que Vercel
 app.all('/api/steeb', (req, res) => steebHandler(req, res));
+
+// Shiny Game Handler
+app.post('/api/shiny-game', (req, res) => shinyGameHandler(req, res));
 
 // Endpoint raíz para Health Checks de Railway (y cualquier otra ruta no definida para evitar 404 en health checks)
 app.get('/', (req, res) => {
