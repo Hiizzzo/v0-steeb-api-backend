@@ -188,7 +188,7 @@ export default async function handler(req, res) {
           const position = shinyStats.position;
           const ordinal = getOrdinal(position);
 
-          finalMessage = `¡¡¡GANASTE SHINY!!! 🎉🎉🎉 ¡SOS el ${ordinal} usuario en conseguir SHINY mode en todo STEEB! ¡Pertenecés a un club exclusivo de solo ${shinyStats.totalShinyUsers} personas! ✨🌟`;
+          finalMessage = `¿¿¿EN SERIO LO ADIVINASTE??? 🤯🤯🤯 ¡¡¡FELICITACIONES!!! 🎉🎉🎉 Ahora sos USUARIO SHINY ✨. Sos el usuario número ${position} en lograrlo. ¡Actualmente hay ${shinyStats.totalShinyUsers} usuarios SHINY en todo el mundo! 🌍🏆`;
 
           console.log(`✅ Usuario agregado al contador global. Posición: ${position}/${shinyStats.totalShinyUsers}`);
           console.log(`🎉 Mensaje de felicitación: ${finalMessage}`);
