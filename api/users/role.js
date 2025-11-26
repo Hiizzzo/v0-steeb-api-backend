@@ -86,6 +86,8 @@ export default async function handler(req, res) {
         lastPayment: user.lastPayment,
         updatedAt: user.updatedAt,
         shinyRolls: user.shinyRolls || 0,
+        nombre: user.nombre || user.name || null,
+        apodo: user.apodo || user.nickname || null,
         darkClubNumber: user.darkClubNumber || null,
         darkClubNickname: user.darkClubNickname || null,
         darkModeUnlockedAt: user.darkModeUnlockedAt || null,
