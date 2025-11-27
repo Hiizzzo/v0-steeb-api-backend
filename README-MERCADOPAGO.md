@@ -149,7 +149,7 @@ Lista todas las imágenes subidas.
 
 Los planes se configuran en `config/paymentPlans.json`. Los planes disponibles son:
 
-- **Usuario Black** ($1 ARS)
+- **Usuario Black** ($3000 ARS)
   - Tema oscuro permanente
   - Acceso a funciones Black exclusivas
 
@@ -161,7 +161,7 @@ Los planes se configuran en `config/paymentPlans.json`. Los planes disponibles s
 
 **Tipos de Usuario**:
 - **White**: Usuario gratuito (default)
-- **Black**: Usuario que compró el plan Black ($1 ARS)
+- **Black**: Usuario que compró el plan Black ($3000 ARS)
 - **Shiny**: Usuario que compró el plan Shiny ($5 ARS)
 
 ## Almacenamiento

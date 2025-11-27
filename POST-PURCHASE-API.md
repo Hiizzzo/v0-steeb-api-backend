@@ -91,7 +91,7 @@ Este endpoint permite que el frontend envíe los datos del usuario después de c
 
 | Plan ID | TipoUsuario | Permisos | Precio |
 |---------|-------------|-----------|--------|
-| `black-user-plan` | `black` | `["dark_mode", "basic_features"]` | $1 ARS |
+| `black-user-plan` | `black` | `["dark_mode", "basic_features"]` | $3000 ARS |
 | `shiny-user-plan` | `shiny` | `["shiny_game", "dark_mode", "premium_features", "exclusive_content"]` | $5 ARS |
 | Otro/Desconocido | `white` | `["basic_features"]` | N/A |
 
