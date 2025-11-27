@@ -7,12 +7,16 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import crypto from 'crypto';
 import 'dotenv/config';
-import { createPurchaseStore } from './server/purchaseStore.js';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { startGlobalStatsWatcher } from './lib/globalStatsWatcher.js';
-import { updateUserTipo, createPaymentRecord, addShinyRolls } from './lib/firebase.js';
 import steebHandler from './api/steeb.js';
 import shinyGameHandler from './api/shiny-game.js';
+import shinyStatsHandler from './api/shiny-stats.js';
+import userRoleHandler from './api/users/role.js';
+import consumeShinyRollHandler from './api/users/consume-shiny-roll.js';
+import createPreferenceHandler from './api/payments/create-preference.js';
+import verifyPaymentHandler from './api/payments/verify.js';
+import paymentStatusHandler from './api/payments/status.js';
+import webhookHandler from './api/payments/webhook.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -72,161 +76,6 @@ try {
 } catch (error) {
   console.error('❌ Error leyendo paymentPlans.json:', error);
 }
-
-const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_ACCESS_TOKEN });
-
-const createPreference = async (preferenceData) => {
-  const preference = new Preference(client);
-  const result = await preference.create({ body: preferenceData });
-  console.log('✨ Preferencia creada:', result.id);
-  console.log('👉 Init Point:', result.init_point);
-  return result;
-};
-
-const mpRequest = async (endpoint, options = {}) => {
-  const url = `https://api.mercadopago.com${endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${MERCADOPAGO_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  });
-  return await response.json();
-};
-
-const searchPayment = async ({ preferenceId, externalReference }) => {
-  const params = new URLSearchParams();
-  if (externalReference) params.append('external_reference', externalReference);
-  if (preferenceId) params.append('preference_id', preferenceId);
-  params.append('sort', 'date_created');
-  params.append('criteria', 'desc');
-
-  const response = await mpRequest(`/v1/payments/search?${params.toString()}`, {
-    method: 'GET',
-  });
-
-  return response.results?.[0] || null;
-};
-
-const mapPaymentToRecord = (payment) => {
-  if (!payment) return null;
-
-  const parts = payment.external_reference?.split('_') || [];
-  const planId = parts[0] || 'unknown';
-  // Extract userId: join all parts between first (planId) and last (timestamp)
-  const userId = parts.length > 2 ? parts.slice(1, -1).join('_') : parts[1] || null;
-
-  return {
-    paymentId: payment.id,
-    status: payment.status,
-    statusDetail: payment.status_detail,
-    planId: planId,
-    userId: userId,
-    email: payment.payer?.email,
-    externalReference: payment.external_reference,
-    preferenceId: payment.order?.id,
-    amount: payment.transaction_amount,
-    currency: payment.currency_id,
-    processedAt: payment.date_created,
-    approvedAt: payment.date_approved
-  };
-};
-
-export const persistPaymentFromMercadoPago = async (payment) => {
-  const record = mapPaymentToRecord(payment);
-  if (!record) {
-    throw new Error('Pago no encontrado en Mercado Pago');
-  }
-  
-  // Asegurar que el ID sea un string válido para Firestore
-  if (record.paymentId) {
-    record.paymentId = String(record.paymentId);
-  }
-  // Si por alguna razón no hay paymentId, usar el ID del objeto payment original
-  if (!record.paymentId && payment.id) {
-    record.paymentId = String(payment.id);
-  }
-
-  // Validación final antes de intentar guardar
-  if (!record.paymentId) {
-    console.error('❌ Error crítico: No se pudo determinar un ID de pago válido para Firestore', record);
-    // Generar un ID de respaldo si es absolutamente necesario para no perder la data
-    record.paymentId = `backup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // Mapear 'paymentId' a 'id' para createPaymentRecord que espera 'id'
-  const firestoreRecord = {
-    ...record,
-    id: record.paymentId // createPaymentRecord usa .doc(paymentData.id)
-  };
-
-  const store = await createPurchaseStore();
-  
-  // Verificar si el pago ya fue procesado para evitar duplicados (Idempotencia)
-  const existingPayment = await store.getByPaymentId(record.paymentId);
-  const isAlreadyApproved = existingPayment && existingPayment.status === 'approved';
-  
-  await store.upsert(record);
-
-  // Guardar respaldo en Firestore (Persistencia real para Railway)
-  try {
-    await createPaymentRecord(firestoreRecord);
-  } catch (error) {
-    console.error('⚠️ Error guardando respaldo de pago en Firestore:', error);
-    // No fallamos todo el proceso si falla el backup en Firestore, pero lo logueamos
-  }
-
-  // Update user in Firebase if approved AND not already processed
-  if (record.status === 'approved' && record.userId && !isAlreadyApproved) {
-    try {
-      // Lógica diferenciada para planes de suscripción vs paquetes de rolls
-      if (record.planId.includes('shiny-roll')) {
-        // Es una compra de rolls
-        let rollsToAdd = 1;
-        if (record.planId.includes('30')) rollsToAdd = 30;
-        else if (record.planId.includes('15')) rollsToAdd = 15;
-        else if (record.planId.includes('5')) rollsToAdd = 5;
-        
-        console.log(`🎲 Adding ${rollsToAdd} shiny rolls to user ${record.userId}...`);
-        await addShinyRolls(record.userId, rollsToAdd);
-      } else {
-        // Es una suscripción (Black o Shiny)
-        const targetType = record.planId.includes('shiny') ? 'shiny' : 'black';
-        const permissions = targetType === 'shiny'
-          ? ['dark_mode', 'basic_features', 'shiny_game', 'premium_features']
-          : ['dark_mode', 'basic_features'];
-
-        console.log(`🔄 Updating user ${record.userId} to ${targetType}...`);
-        await updateUserTipo(record.userId, targetType, permissions);
-
-        // Bonificación: dar 1 tirada shiny gratis al convertirse en usuario Black
-        if (targetType === 'black') {
-          try {
-            console.log(`🎁 Granting welcome shiny roll to new Black user ${record.userId}`);
-            await addShinyRolls(record.userId, 1);
-          } catch (bonusError) {
-            console.error('⚠️ Error adding welcome shiny roll:', bonusError);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error updating user in Firebase:', error);
-      // Don't throw, so we still return the payment record
-    }
-  }
-
-  return record;
-};
-
-const getPlan = (planId) => {
-  return PAYMENT_PLANS.find(p => p.id === planId);
-};
-
-const fetchPaymentById = async (id) => {
-  return await mpRequest(`/v1/payments/${id}`, { method: 'GET' });
-};
 
 // Configurar multer para uploads
 const storage = multer.diskStorage({
@@ -401,178 +250,11 @@ app.get('/api/health', (req, res) => {
 // MERCADO PAGO ENDPOINTS (PRODUCCIÓN)
 // ================================
 
-app.post('/api/payments/create-preference', async (req, res) => {
-  try {
-    const { planId, quantity = 1, userId, email, name } = req.body || {};
-    console.log('📥 create-preference body:', req.body);
-
-    if (!planId) {
-      return res.status(400).json({ error: 'planId es requerido' });
-    }
-
-    if (!userId) {
-      console.error('❌ Error: userId es requerido para crear la preferencia');
-      return res.status(400).json({ error: 'userId es requerido' });
-    }
-
-    const plan = getPlan(planId);
-    if (!plan) {
-      return res.status(404).json({ error: 'Plan no encontrado' });
-    }
-
-    if (!MERCADOPAGO_ACCESS_TOKEN) {
-      return res.status(500).json({
-        error: 'Mercado Pago no está configurado correctamente en el servidor.'
-      });
-    }
-
-    const externalReference = `${plan.id}_${userId || 'anon'}_${Date.now()}`;
-
-    const payer = {};
-    if (email) payer.email = email;
-    if (name) payer.name = name;
-
-    const preferencePayload = {
-      items: [
-        {
-          title: plan.title,
-          quantity: Number(quantity) || 1,
-          unit_price: Number(plan.price),
-          currency_id: plan.currency || 'ARS'
-        }
-      ],
-      back_urls: {
-        success: `${FRONTEND_URL}/payments/success`,
-        pending: `${FRONTEND_URL}/payments/pending`,
-        failure: `${FRONTEND_URL}/payments/failure`
-      },
-      payer: payer,
-      // auto_return: 'approved',
-      external_reference: externalReference
-    };
-
-    console.log('📤 Creating preference with payload:', preferencePayload);
-    const preference = await createPreference(preferencePayload);
-    console.log('✅ Preference created result:', JSON.stringify(preference, null, 2));
-
-    res.json({
-      preferenceId: preference.id,
-      initPoint: preference.init_point,
-      sandboxInitPoint: preference.sandbox_init_point,
-      externalReference,
-      plan
-    });
-  } catch (error) {
-    console.error('❌ Error creando preferencia Mercado Pago:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'No se pudo crear la preferencia'
-    });
-  }
-});
-
-app.post('/api/payments/verify', async (req, res) => {
-  try {
-    const { paymentId, externalReference, preferenceId } = req.body || {};
-
-    if (!paymentId && !externalReference && !preferenceId) {
-      return res
-        .status(400)
-        .json({ error: 'Debes enviar paymentId o externalReference/preferenceId' });
-    }
-
-    let payment = null;
-
-    if (paymentId) {
-      payment = await fetchPaymentById(paymentId);
-    } else {
-      payment = await searchPayment({ preferenceId, externalReference });
-    }
-
-    if (!payment) {
-      return res.status(404).json({ error: 'No se encontraron pagos registrados todavía.' });
-    }
-
-    const record = await persistPaymentFromMercadoPago(payment);
-    res.json({
-      ...record,
-      message: record.status === 'approved'
-        ? 'Pago aprobado'
-        : `Estado actual: ${record.status}`
-    });
-  } catch (error) {
-    console.error('❌ Error verificando pago Mercado Pago:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'No se pudo verificar el pago'
-    });
-  }
-});
-
-app.get('/api/payments/status', async (req, res) => {
-  try {
-    const { planId, userId, email } = req.query;
-
-    if (!planId) {
-      return res.status(400).json({ error: 'planId es requerido' });
-    }
-
-    if (!userId && !email) {
-      return res
-        .status(400)
-        .json({ error: 'Envía userId o email para consultar el estado de compra.' });
-    }
-
-    const store = await createPurchaseStore();
-    const status = await store.getStatus(planId, userId, email);
-    res.json(status);
-  } catch (error) {
-    console.error('❌ Error obteniendo estado de pagos:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'No se pudo obtener el estado de pago'
-    });
-  }
-});
-
-app.post('/api/payments/webhook', async (req, res) => {
-  try {
-    // Validación de secreto opcional (comentada para evitar errores 401 con Mercado Pago estándar)
-    /*
-    if (MP_WEBHOOK_SECRET) {
-      const provided = req.query.secret || req.headers['x-webhook-secret'];
-      if (provided !== MP_WEBHOOK_SECRET) {
-        console.warn('⚠️ Webhook secret mismatch, but proceeding for compatibility.');
-        // return res.status(401).json({ error: 'Token de webhook inválido' });
-      }
-    }
-    */
-
-    const event = req.body || {};
-    const query = req.query || {};
-
-    const topic = event.type || query.type || query.topic;
-    const resourceId =
-      event.data?.id ||
-      event.resource ||
-      query['data.id'] ||
-      query.data_id ||
-      query.id ||
-      event.id;
-
-    if (topic && topic.includes('payment') && resourceId) {
-      try {
-        const payment = await fetchPaymentById(resourceId);
-        await persistPaymentFromMercadoPago(payment);
-        console.log('✅ Webhook Mercado Pago procesado:', resourceId);
-      } catch (error) {
-        console.error('❌ Error procesando webhook de Mercado Pago:', error);
-      }
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error('❌ Error en webhook Mercado Pago:', error);
-    res.status(500).json({ error: 'Error procesando webhook' });
-  }
-});
+// Usar los mismos handlers que Vercel para consistencia
+app.post('/api/payments/create-preference', (req, res) => createPreferenceHandler(req, res));
+app.post('/api/payments/verify', (req, res) => verifyPaymentHandler(req, res));
+app.get('/api/payments/status', (req, res) => paymentStatusHandler(req, res));
+app.post('/api/payments/webhook', (req, res) => webhookHandler(req, res));
 
 
 // Chat AI (DeepSeek) - mismo handler que Vercel
@@ -580,6 +262,15 @@ app.all('/api/steeb', (req, res) => steebHandler(req, res));
 
 // Shiny Game Handler
 app.post('/api/shiny-game', (req, res) => shinyGameHandler(req, res));
+
+// Shiny Stats Handler
+app.all('/api/shiny-stats', (req, res) => shinyStatsHandler(req, res));
+
+// User Role Handler
+app.all('/api/users/role', (req, res) => userRoleHandler(req, res));
+
+// Consume Shiny Roll Handler
+app.all('/api/users/consume-shiny-roll', (req, res) => consumeShinyRollHandler(req, res));
 
 // Endpoint raíz para Health Checks de Railway (y cualquier otra ruta no definida para evitar 404 en health checks)
 app.get('/', (req, res) => {
