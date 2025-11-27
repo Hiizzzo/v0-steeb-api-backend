@@ -44,6 +44,9 @@ app.use(cors({
     'http://127.0.0.1:8083',
     'https://steeb.vercel.app',
     'https://v0-steeb-api-backend-production.up.railway.app',
+    'https://localhost',
+    'capacitor://localhost',
+    'http://localhost',
     FRONTEND_URL
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
