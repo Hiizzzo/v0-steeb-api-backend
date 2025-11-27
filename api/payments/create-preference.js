@@ -94,13 +94,15 @@ export default async function handler(req, res) {
 
     const externalReference = `${plan.id}_${userId || 'anon'}_${Date.now()}`;
 
-    const payer = {};
-    if (email) payer.email = email;
+    const payer = {
+      email: email || 'test_user_123456@testuser.com' // Fallback email for testing/validation
+    };
     if (name) payer.name = name;
 
     const preferencePayload = {
       items: [
         {
+          id: plan.id,
           title: plan.title,
           quantity: Number(quantity) || 1,
           unit_price: Number(plan.price),
@@ -115,6 +117,7 @@ export default async function handler(req, res) {
       },
       auto_return: 'approved',
       external_reference: externalReference,
+      statement_descriptor: "STEEB APP",
       // 💡 Guardar el avatar en la preferencia para que el webhook pueda acceder a él
       metadata: {
         avatar: req.body?.avatar || null,
