@@ -107,11 +107,13 @@ export default async function handler(req, res) {
           currency_id: plan.currency || 'ARS'
         }
       ],
+      payer: payer,
       back_urls: {
         success: `https://steeb.vercel.app/payment-success`,
         pending: `https://steeb.vercel.app/payment-pending`,
         failure: `https://steeb.vercel.app/payment-failure`
       },
+      auto_return: 'approved',
       external_reference: externalReference,
       // 💡 Guardar el avatar en la preferencia para que el webhook pueda acceder a él
       metadata: {
