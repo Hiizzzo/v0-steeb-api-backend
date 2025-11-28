@@ -31,7 +31,15 @@ const createPreference = async (preferenceData) => {
   const result = await preference.create({ body: preferenceData });
   console.log('✨ Preferencia creada:', result.id);
   console.log('👉 Init Point:', result.init_point);
-  return result;
+
+  // 🎯 FORZAR DEEP LINKS para mejor UX en Android (abre app nativa)
+  const deepLinkInitPoint = `mercadopago://checkout/v1/redirect?pref_id=${result.id}`;
+  console.log('🔗 Deep Link forzado:', deepLinkInitPoint);
+
+  return {
+    ...result,
+    init_point: deepLinkInitPoint // Forzar deep link
+  };
 };
 
 const getPlan = (planId) => {
