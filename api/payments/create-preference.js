@@ -28,28 +28,19 @@ try {
 const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_ACCESS_TOKEN });
 
 const createPreference = async (preferenceData) => {
-  // 🔧 SANDBOX: Usar URLs de sandbox si tenemos credenciales de test
-  if (IS_SANDBOX) {
-    console.log('⚠️ Modo sandbox detectado - usando sandbox URLs');
-  }
+  // 🚀 PRODUCCIÓN: Eliminar sandbox - usar credenciales de producción
+  console.log('🚀 MODO PRODUCCIÓN - Credenciales:', MERCADOPAGO_ACCESS_TOKEN.substring(0, 20) + '...');
 
   const preference = new Preference(client);
   const result = await preference.create({ body: preferenceData });
   console.log('✨ Preferencia creada:', result.id);
   console.log('👉 Init Point:', result.init_point);
 
-  // 🎯 MODO SANDBOX: Forzar deep links para mejor UX en Android
-  // 🌐 MODO PRODUCCIÓN: Si tienes credenciales PROD, desactiva este bloque
-  const deepLinkInitPoint = IS_SANDBOX
-    ? `mercadopago://checkout/v1/redirect?pref_id=${result.id}`
-    : result.init_point; // Si es producción, usar URL normal
+  // 🎯 PRODUCCIÓN: Usar URLs originales de Mercado Pago (ya son HTTPS)
+  // Ya no forzar deep links - dejar que el SDK decida
+  console.log('🔗 URL de producción original:', result.init_point);
 
-  console.log('🔗 Init Point final:', deepLinkInitPoint, '(sandbox:', IS_SANDBOX, ')');
-
-  return {
-    ...result,
-    init_point: deepLinkInitPoint
-  };
+  return result;
 };
 
 const getPlan = (planId) => {
