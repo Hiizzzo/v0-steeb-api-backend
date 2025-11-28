@@ -131,10 +131,13 @@ export default async function handler(req, res) {
     const preference = await createPreference(preferencePayload);
     console.log('✅ Preference created result:', JSON.stringify(preference, null, 2));
 
+    // 🔧 SOLUCIÓN: Solo devolver URLs web para evitar error PXB01-GLAW8ZG3Y4V7 en Android
+    // Los deep links (mercadopago://) causan el error en la app nativa de Mercado Pago
     res.json({
       preferenceId: preference.id,
-      initPoint: preference.init_point,
-      sandboxInitPoint: preference.sandbox_init_point,
+      // SOLO URLs web que funcionan en navegador sin errores PXB01
+      initPoint: preference.init_point?.replace(/^mercadopago:\/\//, 'https://') || null,
+      sandboxInitPoint: preference.sandbox_init_point?.replace(/^mercadopago:\/\//, 'https://') || null,
       externalReference,
       plan
     });
