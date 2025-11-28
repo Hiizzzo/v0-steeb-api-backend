@@ -10,6 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const MERCADOPAGO_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
+const IS_SANDBOX = MERCADOPAGO_ACCESS_TOKEN.startsWith('APP_USR-'); // Detectar si son credenciales de sandbox
 const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `https://v0-steeb-api-backend-production.up.railway.app`;
 
 const paymentPlansPath = path.join(__dirname, '..', '..', 'config', 'paymentPlans.json');
@@ -27,18 +28,27 @@ try {
 const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_ACCESS_TOKEN });
 
 const createPreference = async (preferenceData) => {
+  // 🔧 SANDBOX: Usar URLs de sandbox si tenemos credenciales de test
+  if (IS_SANDBOX) {
+    console.log('⚠️ Modo sandbox detectado - usando sandbox URLs');
+  }
+
   const preference = new Preference(client);
   const result = await preference.create({ body: preferenceData });
   console.log('✨ Preferencia creada:', result.id);
   console.log('👉 Init Point:', result.init_point);
 
-  // 🎯 FORZAR DEEP LINKS para mejor UX en Android (abre app nativa)
-  const deepLinkInitPoint = `mercadopago://checkout/v1/redirect?pref_id=${result.id}`;
-  console.log('🔗 Deep Link forzado:', deepLinkInitPoint);
+  // 🎯 MODO SANDBOX: Forzar deep links para mejor UX en Android
+  // 🌐 MODO PRODUCCIÓN: Si tienes credenciales PROD, desactiva este bloque
+  const deepLinkInitPoint = IS_SANDBOX
+    ? `mercadopago://checkout/v1/redirect?pref_id=${result.id}`
+    : result.init_point; // Si es producción, usar URL normal
+
+  console.log('🔗 Init Point final:', deepLinkInitPoint, '(sandbox:', IS_SANDBOX, ')');
 
   return {
     ...result,
-    init_point: deepLinkInitPoint // Forzar deep link
+    init_point: deepLinkInitPoint
   };
 };
 
