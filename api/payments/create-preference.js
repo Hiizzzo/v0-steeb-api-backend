@@ -31,14 +31,19 @@ const createPreference = async (preferenceData) => {
   // 🚀 PRODUCCIÓN: Eliminar sandbox - usar credenciales de producción
   console.log('🚀 MODO PRODUCCIÓN - Credenciales:', MERCADOPAGO_ACCESS_TOKEN.substring(0, 20) + '...');
 
+  // 🔍 DEBUG: Log completo de preferencia para debuggear PXB01
+  console.log('🔍 DEBUG - Request payload:', JSON.stringify(preferenceData, null, 2));
+
   const preference = new Preference(client);
   const result = await preference.create({ body: preferenceData });
-  console.log('✨ Preferencia creada:', result.id);
-  console.log('👉 Init Point:', result.init_point);
+
+  console.log('✅ DEBUG - Preferencia creada ID:', result.id);
+  console.log('🔗 DEBUG - Init Point:', result.init_point);
+  console.log('📱 DEBUG - Sandbox Init Point:', result.sandbox_init_point);
+  console.log('💰 DEBUG - External Reference:', result.external_reference);
 
   // 🎯 PRODUCCIÓN: Usar URLs originales de Mercado Pago (ya son HTTPS)
-  // Ya no forzar deep links - dejar que el SDK decida
-  console.log('🔗 URL de producción original:', result.init_point);
+  console.log('🔗 URL de producción final:', result.init_point);
 
   return result;
 };
