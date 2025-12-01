@@ -59,14 +59,14 @@ const sanitizeAction = (action) => {
 };
 
 // 🚀 FUNCIÓN OPTIMIZADA PARA LLAMAR A DEEPSEEK CON STREAMING
-const streamDeepSeekAPI = async (message, userId, res) => {
+const streamDeepSeekAPI = async (message, userId, res, systemPrompt = STEEB_SYSTEM_PROMPT) => {
   console.log(`🤖 STEEB Stream Request - User: ${userId}, Message: "${message.substring(0, 50)}..."`);
 
   try {
     const deepseekRequest = {
       model: "deepseek-chat",
       messages: [
-        { role: "system", content: STEEB_SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
       max_tokens: 500,
@@ -173,10 +173,16 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { message, userId } = req.body;
+    const { message, userId, context } = req.body;
 
     if (!message || !userId) {
       return res.status(400).json({ error: 'Message and userId required' });
+    }
+
+    let currentSystemPrompt = STEEB_SYSTEM_PROMPT;
+    if (context) {
+      const contextStr = JSON.stringify(context, null, 2);
+      currentSystemPrompt += `\n\nCONTEXTO ACTUAL DEL USUARIO (Tareas y estado):\n${contextStr}\n\nUsa esta información para dar respuestas precisas sobre lo que el usuario tiene pendiente o completado.`;
     }
 
     // Configurar headers para SSE
@@ -202,7 +208,7 @@ export default async function handler(req, res) {
     }
 
     // Iniciar streaming real
-    await streamDeepSeekAPI(message, userId, res);
+    await streamDeepSeekAPI(message, userId, res, currentSystemPrompt);
 
   } catch (error) {
     console.error('❌ STEEB API Error:', error);
