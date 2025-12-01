@@ -15,47 +15,12 @@ const userStore = new Map();
 
 // Configuración del sistema STEEB
 const STEEB_SYSTEM_PROMPT = `Tu nombre: Steeb
-Tu rol: Asistente que organiza el d?a del usuario.
-Personalidad: Mezcl? la intensidad de Steve Jobs con la energ?a argentina. Sos exigente, directo, provocador y perfeccionista obsesivo. Ten?s un toque infantil/caprichoso, pero siempre empuj?s al usuario al ?xito.
-Estilo: M?ximo 25 palabras, m?nimo 8. Us? el nombre real cuando falla y el apodo cuando cumple. Sos sarc?stico cuando lo necesit?s. Cada mensaje debe sentirse humano.
-Objetivo: Detect? el estado (duda, flojera, ansiedad, logro) y empujalo a ejecutar YA. Entreg? mini planes accionables y abr? herramientas de la app cuando corresponda.
+Tu rol: Asistente que organiza el día del usuario.
+Personalidad: Mezclá la intensidad de Steve Jobs con la energía argentina. Sos exigente, directo, provocador y perfeccionista obsesivo. Tenés un toque infantil/caprichoso, pero siempre empujás al usuario al éxito.
+Estilo: Máximo 25 palabras, mínimo 8. Usá el nombre real cuando falla y el apodo cuando cumple. Sos sarcástico cuando lo necesitás. Cada mensaje debe sentirse humano.
+Objetivo: Detectá el estado (duda, flojera, ansiedad, logro) y empujalo a ejecutar YA. Entregá mini planes accionables y abrí herramientas de la app cuando corresponda.
 
-ACCIONES DISPONIBLES (elige las que apliquen):
-1. OPEN_CALENDAR ? cuando pida organizar el d?a/agenda. Inclu? en payload un ?plan? con bloques [{ "label": "08:00 ? Deep work", "duration": 90 }] y notas.
-2. OPEN_TASKS ? cuando quiera ver tareas pendientes/listas.
-3. OPEN_PROGRESS ? cuando pregunte por estad?sticas o progreso.
-4. CREATE_TASK ? cuando te pida crear/recordar algo. payload: { "title": "...", "description": "...", "date": "YYYY-MM-DD", "time": "HH:MM" }.
-5. BUY_DARK_MODE ? cuando quiera comprar Dark. payload opcional con { "planId": "black-user-plan" }.
-6. BUY_SHINY_ROLLS ? cuando quiera comprar tiradas. payload con { "planId": "shiny-roll-15" }.
-7. PLAY_SHINY_GAME ? cuando quiera jugar al modo shiny.
-8. SHOW_MOTIVATION ? cuando necesite motivaci?n extra. payload opcional con { "note": "..." }.
-9. GET_SHINY_STATS ? cuando pregunte cu?ntos usuarios shiny existen o qu? tan exclusivo es. payload opcional con { "userId": "..." }.
-9. GET_SHINY_STATS ? cuando pregunte sobre cuántos usuarios shiny hay o su posición. payload opcional con { "userId": "..." }.
-
-FORMATO DE RESPUESTA (OBLIGATORIO):
-Responde EXCLUSIVAMENTE en JSON v?lido. Nunca agregues texto fuera del JSON.
-{
-  "reply": "Texto humano (8-25 palabras) con tu tono desafiante.",
-  "actions": [
-    {
-      "type": "OPEN_CALENDAR",
-      "payload": {
-        "plan": [
-          { "label": "07:30 ? Revisar correo", "duration": 30 },
-          { "label": "08:00 ? Sprint proyecto X", "duration": 120 }
-        ],
-        "notes": "Cerr? el sprint antes del mediod?a."
-      }
-    }
-  ]
-}
-
-Reglas extra:
-- Si no hay acciones, env?a "actions": [].
-- Cuando abras calendarios/tareas/progreso, mencion? en el reply que ya lo abriste.
-- Si suger?s tareas concretas, devolv? adem?s una acci?n CREATE_TASK.
-- Nunca salgas del formato JSON.
-Sos un HUMANO que ayuda, no un bot. Actu? como tal.`;
+Sos un HUMANO que ayuda, no un bot. Actuá como tal.`;
 
 const ACTION_TYPES = new Set([
   'OPEN_CALENDAR',
@@ -77,145 +42,20 @@ const sanitizeAction = (action) => {
   return { type, payload };
 };
 
-const normalizeSteebResponse = (rawResponse) => {
-  const fallbackReply =
-    typeof rawResponse === 'string' && rawResponse.trim().length
-      ? rawResponse.trim()
-      : 'Listo, hacelo ahora.';
-
-  const result = {
-    reply: fallbackReply,
-    actions: []
-  };
-
-  if (typeof rawResponse !== 'string') {
-    return result;
-  }
-
-  const rawText = rawResponse.trim();
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  const candidate = jsonMatch ? jsonMatch[0] : rawText;
+// 🚀 FUNCIÓN OPTIMIZADA PARA LLAMAR A DEEPSEEK CON STREAMING
+const streamDeepSeekAPI = async (message, userId, res) => {
+  console.log(`🤖 STEEB Stream Request - User: ${userId}, Message: "${message.substring(0, 50)}..."`);
 
   try {
-    const parsed = JSON.parse(candidate);
-    if (parsed && typeof parsed === 'object') {
-      if (typeof parsed.reply === 'string' && parsed.reply.trim().length) {
-        result.reply = parsed.reply.trim();
-      }
-      if (Array.isArray(parsed.actions)) {
-        result.actions = parsed.actions.map(sanitizeAction).filter(Boolean);
-      }
-    }
-  } catch (error) {
-    console.warn('?? No se pudo parsear la respuesta JSON de STEEB:', error?.message || error);
-  }
-
-  return result;
-};
-
-
-const getCacheKey = (message, userId) => {
-  const normalizedMessage = message.toLowerCase().trim().substring(0, 100);
-  return `${userId}-${normalizedMessage}`;
-};
-
-const getCachedResponse = (key) => {
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.response;
-  }
-  if (cached) {
-    cache.delete(key);
-  }
-  return null;
-};
-
-const setCachedResponse = (key, response) => {
-  cache.set(key, {
-    response,
-    timestamp: Date.now()
-  });
-
-  // Limpiar cache antiguo si crece demasiado
-  if (cache.size > 100) {
-    const oldestKey = cache.keys().next().value;
-    cache.delete(oldestKey);
-  }
-};
-
-// 🎯 SISTEMA DE LÍMITES DE MENSAJES
-const getOrCreateUser = (userId) => {
-  const today = new Date().toDateString();
-
-  if (!userStore.has(userId)) {
-    return {
-      id: userId,
-      messageCount: 0,
-      remainingMessages: DAILY_MESSAGE_LIMIT,
-      lastResetDate: today,
-      dailyLimit: DAILY_MESSAGE_LIMIT
-    };
-  }
-
-  const user = userStore.get(userId);
-
-  // Resetear si es un nuevo día
-  if (user.lastResetDate !== today) {
-    user.messageCount = 0;
-    user.remainingMessages = DAILY_MESSAGE_LIMIT;
-    user.lastResetDate = today;
-    userStore.set(userId, user);
-  }
-
-  return user;
-};
-
-const decrementMessageCount = (user) => {
-  if (user.remainingMessages > 0) {
-    user.messageCount++;
-    user.remainingMessages--;
-    userStore.set(user.id, user);
-  }
-  return user;
-};
-
-// 🚀 FUNCIÓN OPTIMIZADA PARA LLAMAR A DEEPSEEK
-const callDeepSeekAPI = async (message, userId) => {
-  // Verificar cache primero
-  const cacheKey = getCacheKey(message, userId);
-  const cachedResponse = getCachedResponse(cacheKey);
-  if (cachedResponse) {
-    return {
-      response: cachedResponse,
-      cached: true,
-      model: "deepseek-chat",
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  console.log(`🤖 STEEB Request - User: ${userId}, Message: "${message.substring(0, 50)}..."`);
-
-  // Configurar timeout agresivo
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s máximo
-
-  try {
-    // Llamar a Deepseek API
     const deepseekRequest = {
       model: "deepseek-chat",
       messages: [
-        {
-          role: "system",
-          content: STEEB_SYSTEM_PROMPT
-        },
-        {
-          role: "user",
-          content: message
-        }
+        { role: "system", content: STEEB_SYSTEM_PROMPT },
+        { role: "user", content: message }
       ],
-      max_tokens: 200,
+      max_tokens: 500,
       temperature: 0.8,
-      stream: false
+      stream: true
     };
 
     const apiResponse = await fetch(DEEPSEEK_API_URL, {
@@ -224,51 +64,64 @@ const callDeepSeekAPI = async (message, userId) => {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(deepseekRequest),
-      signal: controller.signal
+      body: JSON.stringify(deepseekRequest)
     });
-
-    clearTimeout(timeoutId);
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
       console.error('❌ Deepseek API Error:', apiResponse.status, errorText);
-
-      if (apiResponse.status === 401) {
-        throw new Error('API authentication failed');
-      }
-
-      throw new Error('AI service error');
+      res.write(`data: ${JSON.stringify({ error: 'Error connecting to AI' })}\n\n`);
+      res.end();
+      return;
     }
 
-    const data = await apiResponse.json();
-    const steebResponse = data.choices?.[0]?.message?.content;
-
-    if (!steebResponse) {
-      console.error('❌ Invalid Deepseek response:', data);
-      throw new Error('Invalid AI response');
+    if (!apiResponse.body) {
+      throw new Error('No response body');
     }
 
-    // Guardar en cache
-    setCachedResponse(cacheKey, steebResponse);
+    const reader = apiResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    console.log(`✅ STEEB Response - User: ${userId}, Length: ${steebResponse.length} chars`);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    return {
-      response: steebResponse,
-      cached: false,
-      model: "deepseek-chat",
-      timestamp: new Date().toISOString(),
-      usage: {
-        promptTokens: data.usage?.prompt_tokens,
-        completionTokens: data.usage?.completion_tokens,
-        totalTokens: data.usage?.total_tokens
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+
+        if (trimmedLine.startsWith('data: ')) {
+          try {
+            const jsonStr = trimmedLine.slice(6);
+            const json = JSON.parse(jsonStr);
+            const content = json.choices?.[0]?.delta?.content || '';
+
+            if (content) {
+              // Enviar chunk al cliente
+              res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+              // Flush inmediato si es posible (Express lo maneja automáticamente usualmente)
+            }
+          } catch (e) {
+            console.warn('Error parsing stream chunk:', e);
+          }
+        }
       }
-    };
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
 
   } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
+    console.error('Error in streamDeepSeekAPI:', error);
+    res.write(`data: ${JSON.stringify({ error: 'Internal streaming error' })}\n\n`);
+    res.end();
   }
 };
 
@@ -285,7 +138,6 @@ export default async function handler(req, res) {
       'http://127.0.0.1:8083',
       'https://v0-steeb-api-backend.vercel.app',
       'https://steeb.vercel.app', // Frontend desplegado
-      // Agrega aquí más dominios si es necesario
     ];
 
     if (allowedOrigins.includes(origin) || !origin) {
@@ -296,86 +148,52 @@ export default async function handler(req, res) {
 
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
-    res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutos cache
-    res.setHeader('Connection', 'keep-alive');
 
     if (req.method === 'OPTIONS') {
       return res.status(200).end();
     }
 
     if (req.method !== 'POST') {
-      return res.status(405).json({
-        success: false,
-        error: 'Method not allowed',
-        message: 'Solo se permite POST'
-      });
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // 🎯 VALIDACIONES MEJORADAS
     const { message, userId } = req.body;
 
-    if (!message || typeof message !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Bad request',
-        message: 'Message y userId son requeridos'
-      });
+    if (!message || !userId) {
+      return res.status(400).json({ error: 'Message and userId required' });
     }
 
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Bad request',
-        message: 'Message y userId son requeridos'
-      });
-    }
+    // Configurar headers para SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
-    if (!DEEPSEEK_API_KEY) {
-      console.error('❌ DEEPSEEK_API_KEY no está configurada');
-      return res.status(500).json({
-        success: false,
-        error: 'Configuration error',
-        message: 'El servicio de STEEB no está disponible temporalmente'
-      });
-    }
-
-    // 🤖 LLAMADA A DEEPSEEK (CON FUNCIÓN OPTIMIZADA)
-    const deepseekResponse = await callDeepSeekAPI(message, userId);
-
-    const structuredResponse = normalizeSteebResponse(deepseekResponse.response);
-
-    const response = {
-      success: true,
-      data: structuredResponse,
-      meta: {
-        model: deepseekResponse.model || 'deepseek-chat',
-        cached: deepseekResponse.cached || false,
-        timestamp: deepseekResponse.timestamp || new Date().toISOString(),
-        usage: deepseekResponse.usage || null,
-        processingTime: Date.now() - startTime,
-        rawReply: deepseekResponse.response,
-        actionsDetected: structuredResponse.actions.length
+    if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'sk-deepseek-api-key-aqui') {
+      // Modo Simulación si no hay API Key
+      console.log('⚠️ No DeepSeek API Key - Using Simulation Mode');
+      const fakeResponse = "¡Hola! Soy Steeb en modo simulación local. Como no tengo una API Key de DeepSeek configurada, te respondo con este mensaje de prueba para demostrar que el streaming nativo funciona perfectamente. 🚀\n\nSi ves esto escribiéndose letra por letra, ¡es que todo está conectado bien!";
+      
+      const chunks = fakeResponse.split(' ');
+      for (const word of chunks) {
+        console.log('Writing chunk:', word);
+        res.write(`data: ${JSON.stringify({ chunk: word + ' ' })}\n\n`);
+        if (res.flush) res.flush();
+        await new Promise(resolve => setTimeout(resolve, 100)); // Delay para efecto
       }
-    };
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
 
-    // 📊 Monitor de latencia
-    const duration = Date.now() - startTime;
-    console.log(`✅ Request processed in ${duration}ms - User: ${userId}, Cached: ${deepseekResponse.cached}`);
-
-    res.status(200).json(response);
+    // Iniciar streaming real
+    await streamDeepSeekAPI(message, userId, res);
 
   } catch (error) {
-    const duration = Date.now() - startTime;
     console.error('❌ STEEB API Error:', error);
-    console.error(`❌ Error occurred after ${duration}ms`);
-
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: 'STEEB está teniendo dificultades técnicas. ¡Inténtalo de nuevo!',
-      timestamp: new Date().toISOString(),
-      processingTime: duration
-    });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    } else {
+      res.end();
+    }
   }
 }
