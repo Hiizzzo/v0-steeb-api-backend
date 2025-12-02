@@ -595,9 +595,29 @@ app.post('/payments/create-preference', async (req, res) => {
 
     const externalReference = `${plan.id}_${userId || 'anon'}_${Date.now()}`;
 
-    const payer = {};
-    if (email) payer.email = email;
-    if (name) payer.name = name;
+    const payer = {
+      email: email || 'test_user_123456@testuser.com'
+    };
+    
+    // Fix PXB01: Mercado Pago requiere name y surname separados y válidos
+    if (name) {
+      try {
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+          payer.name = parts[0];
+          payer.surname = parts.slice(1).join(' ');
+        } else {
+          payer.name = name;
+          payer.surname = 'User'; // Fallback surname para evitar error
+        }
+      } catch (e) {
+        payer.name = name;
+        payer.surname = 'User';
+      }
+    } else {
+      payer.name = 'Steeb';
+      payer.surname = 'User';
+    }
 
     const preferencePayload = {
       items: [
@@ -609,12 +629,18 @@ app.post('/payments/create-preference', async (req, res) => {
         }
       ],
       back_urls: {
-        success: `${APP_BASE_URL}/payments/success`,
-        pending: `${APP_BASE_URL}/payments/pending`,
-        failure: `${APP_BASE_URL}/payments/failure`
+        success: `https://steeb.vercel.app/payment-success`,
+        pending: `https://steeb.vercel.app/payment-pending`,
+        failure: `https://steeb.vercel.app/payment-failure`
       },
-      // auto_return: 'approved',
-      external_reference: externalReference
+      auto_return: 'approved',
+      external_reference: externalReference,
+      payment_methods: {
+        excluded_payment_types: [
+          { id: "ticket" } // Excluir pagos en efectivo (Rapipago/PagoFácil) para evitar problemas de redirección
+        ],
+        installments: 1 // Forzar 1 cuota por defecto para simplificar
+      }
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);
