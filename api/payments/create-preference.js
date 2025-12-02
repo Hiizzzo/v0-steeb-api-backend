@@ -56,16 +56,16 @@ export default async function handler(req, res) {
   // 🚀 Enhanced CORS headers for Vercel compatibility
   const origin = req.headers.origin;
   const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:8083',
-  'http://127.0.0.1:8083',
-  'http://localhost:8083',
-  'https://v0-steeb-api-backend.vercel.app',
-  'https://v0-steeb-api-backend-production.up.railway.app',
-  'https://steeb.vercel.app',
-  'https://steeb2.vercel.app',
-];
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:8083',
+    'http://127.0.0.1:8083',
+    'http://localhost:8083',
+    'https://v0-steeb-api-backend.vercel.app',
+    'https://v0-steeb-api-backend-production.up.railway.app',
+    'https://steeb.vercel.app',
+    'https://steeb2.vercel.app',
+  ];
 
   if (allowedOrigins.includes(origin) || !origin) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
@@ -138,7 +138,8 @@ export default async function handler(req, res) {
         userName: req.body?.name || null,
         userEmail: req.body?.email || null
       },
-      notification_url: `${APP_BASE_URL}/api/payments/webhook`
+      notification_url: `${APP_BASE_URL}/api/payments/webhook`,
+      binary_mode: true
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);
