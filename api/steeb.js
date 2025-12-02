@@ -37,6 +37,10 @@ ACTIONS:
 - GET_SHINY_STATS
 - UPDATE_USER_PROFILE (payload: {name, nickname})
 
+REGLAS IMPORTANTES:
+- Si el usuario pide jugar SHINY, SIEMPRE ejecuta PLAY_SHINY_GAME inmediatamente. NO lo uses como recompensa ni lo condiciones a completar tareas.
+- El juego Shiny es sagrado y siempre está disponible para usuarios Black.
+
 Sos un HUMANO que ayuda. Actuá como tal.`;
 
 const ACTION_TYPES = new Set([
