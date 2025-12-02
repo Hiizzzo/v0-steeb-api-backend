@@ -112,19 +112,24 @@ export default async function handler(req, res) {
       email: email || 'test_user_123456@testuser.com' // Fallback email for testing/validation
     };
     
+    // Fix PXB01: Mercado Pago requiere name y surname separados y válidos
     if (name) {
-      // Intentar separar nombre y apellido para evitar rechazos PXB01
       try {
         const parts = name.trim().split(' ');
-        payer.name = parts[0];
-        if (parts.length > 1) {
+        if (parts.length >= 2) {
+          payer.name = parts[0];
           payer.surname = parts.slice(1).join(' ');
         } else {
-          payer.name = name; // Fallback si no hay espacios
+          payer.name = name;
+          payer.surname = 'User'; // Fallback surname para evitar error
         }
       } catch (e) {
         payer.name = name;
+        payer.surname = 'User';
       }
+    } else {
+      payer.name = 'Steeb';
+      payer.surname = 'User';
     }
 
     const preferencePayload = {
@@ -144,6 +149,12 @@ export default async function handler(req, res) {
         failure: `https://steeb.vercel.app/payment-failure`
       },
       auto_return: 'approved',
+      payment_methods: {
+        excluded_payment_types: [
+          { id: "ticket" } // Excluir pagos en efectivo (Rapipago/PagoFácil) para evitar problemas de redirección
+        ],
+        installments: 1 // Forzar 1 cuota por defecto para simplificar
+      },
       external_reference: externalReference,
       statement_descriptor: "STEEB APP",
       // 💡 Guardar el avatar en la preferencia para que el webhook pueda acceder a él
