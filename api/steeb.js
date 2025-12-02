@@ -35,6 +35,7 @@ ACTIONS:
 - PLAY_SHINY_GAME
 - SHOW_MOTIVATION (payload: {note})
 - GET_SHINY_STATS
+- UPDATE_USER_PROFILE (payload: {name, nickname})
 
 Sos un HUMANO que ayuda. Actuá como tal.`;
 
@@ -47,7 +48,8 @@ const ACTION_TYPES = new Set([
   'BUY_SHINY_ROLLS',
   'PLAY_SHINY_GAME',
   'SHOW_MOTIVATION',
-  'GET_SHINY_STATS'
+  'GET_SHINY_STATS',
+  'UPDATE_USER_PROFILE'
 ]);
 
 const sanitizeAction = (action) => {
