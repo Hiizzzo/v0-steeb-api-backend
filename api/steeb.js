@@ -143,6 +143,186 @@ const streamDeepSeekAPI = async (message, userId, res, systemPrompt = STEEB_SYST
 
 export default async function handler(req, res) {
   const startTime = Date.now();
+  if (!ACTION_TYPES.has(type)) return null;
+  const payload = action.payload && typeof action.payload === 'object' ? action.payload : {};
+  return { type, payload };
+};
+
+// 🚀 FUNCIÓN OPTIMIZADA PARA LLAMAR A DEEPSEEK CON STREAMING
+const streamDeepSeekAPI = async (message, userId, res, systemPrompt = STEEB_SYSTEM_PROMPT) => {
+  console.log(`🤖 STEEB Stream Request - User: ${userId}, Message: "${message.substring(0, 50)}..."`);
+
+  try {
+    const deepseekRequest = {
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ],
+      max_tokens: 500,
+      temperature: 0.8,
+      stream: true
+    };
+
+    const apiResponse = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(deepseekRequest)
+    });
+
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.error('❌ Deepseek API Error:', apiResponse.status, errorText);
+      res.write(`data: ${JSON.stringify({ error: 'Error connecting to AI' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!apiResponse.body) {
+      throw new Error('No response body');
+    }
+
+    const reader = apiResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+
+        if (trimmedLine.startsWith('data: ')) {
+          try {
+            const jsonStr = trimmedLine.slice(6);
+            const json = JSON.parse(jsonStr);
+            const content = json.choices?.[0]?.delta?.content || '';
+
+            if (content) {
+              // Enviar chunk al cliente
+              res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+              // Flush inmediato si es posible (Express lo maneja automáticamente usualmente)
+            }
+          } catch (e) {
+            console.warn('Error parsing stream chunk:', e);
+          }
+        }
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (error) {
+    console.error('Error in streamDeepSeekAPI:', error);
+    res.write(`data: ${JSON.stringify({ error: 'Internal streaming error' })}\n\n`);
+    res.end();
+  }
+};
+
+export default async function handler(req, res) {
+  const startTime = Date.now();
+  if (!ACTION_TYPES.has(type)) return null;
+  const payload = action.payload && typeof action.payload === 'object' ? action.payload : {};
+  return { type, payload };
+};
+
+// 🚀 FUNCIÓN OPTIMIZADA PARA LLAMAR A DEEPSEEK CON STREAMING
+const streamDeepSeekAPI = async (message, userId, res, systemPrompt = STEEB_SYSTEM_PROMPT) => {
+  console.log(`🤖 STEEB Stream Request - User: ${userId}, Message: "${message.substring(0, 50)}..."`);
+
+  try {
+    const deepseekRequest = {
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ],
+      max_tokens: 500,
+      temperature: 0.8,
+      stream: true
+    };
+
+    const apiResponse = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(deepseekRequest)
+    });
+
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.error('❌ Deepseek API Error:', apiResponse.status, errorText);
+      res.write(`data: ${JSON.stringify({ error: 'Error connecting to AI' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!apiResponse.body) {
+      throw new Error('No response body');
+    }
+
+    const reader = apiResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+
+        if (trimmedLine.startsWith('data: ')) {
+          try {
+            const jsonStr = trimmedLine.slice(6);
+            const json = JSON.parse(jsonStr);
+            const content = json.choices?.[0]?.delta?.content || '';
+
+            if (content) {
+              // Enviar chunk al cliente
+              res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+              // Flush inmediato si es posible (Express lo maneja automáticamente usualmente)
+            }
+          } catch (e) {
+            console.warn('Error parsing stream chunk:', e);
+          }
+        }
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (error) {
+    console.error('Error in streamDeepSeekAPI:', error);
+    res.write(`data: ${JSON.stringify({ error: 'Internal streaming error' })}\n\n`);
+    res.end();
+  }
+};
+
+export default async function handler(req, res) {
+  const startTime = Date.now();
 
   try {
     // 🚀 Headers optimizados para velocidad
@@ -194,7 +374,7 @@ export default async function handler(req, res) {
       // Modo Simulación si no hay API Key
       console.log('⚠️ No DeepSeek API Key - Using Simulation Mode');
       const fakeResponse = "¡Hola! Soy Steeb en modo simulación local. Como no tengo una API Key de DeepSeek configurada, te respondo con este mensaje de prueba para demostrar que el streaming nativo funciona perfectamente. 🚀\n\nSi ves esto escribiéndose letra por letra, ¡es que todo está conectado bien!";
-      
+
       const chunks = fakeResponse.split(' ');
       for (const word of chunks) {
         console.log('Writing chunk:', word);
