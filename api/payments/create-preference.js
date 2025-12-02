@@ -111,7 +111,21 @@ export default async function handler(req, res) {
     const payer = {
       email: email || 'test_user_123456@testuser.com' // Fallback email for testing/validation
     };
-    if (name) payer.name = name;
+    
+    if (name) {
+      // Intentar separar nombre y apellido para evitar rechazos PXB01
+      try {
+        const parts = name.trim().split(' ');
+        payer.name = parts[0];
+        if (parts.length > 1) {
+          payer.surname = parts.slice(1).join(' ');
+        } else {
+          payer.name = name; // Fallback si no hay espacios
+        }
+      } catch (e) {
+        payer.name = name;
+      }
+    }
 
     const preferencePayload = {
       items: [
