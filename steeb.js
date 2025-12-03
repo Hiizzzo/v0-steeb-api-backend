@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const { message, userId = 'anonymous' } = req.body;
+    const { message, userId = 'anonymous', userRole = 'white' } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({
@@ -135,7 +135,7 @@ export default async function handler(req, res) {
       messages: [
         {
           role: "system",
-          content: STEEB_SYSTEM_PROMPT
+          content: `${STEEB_SYSTEM_PROMPT}\n\nInformación del usuario:\n- ID: ${userId}\n- Rol: ${userRole}`
         },
         {
           role: "user",
