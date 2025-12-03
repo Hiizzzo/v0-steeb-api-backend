@@ -71,12 +71,30 @@ export default async function handler(req, res) {
     }
 
     // 1. Obtener usuario
-    const user = await getUserFromFirestore(userId);
+    let user = await getUserFromFirestore(userId);
+    let isNewUser = false;
+
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found',
-        message: 'Usuario no encontrado'
-      });
+      // Si el usuario no existe, lo creamos temporalmente en memoria para la lógica
+      // O mejor aún, lo creamos en Firestore si es necesario para guardar el intento
+      // Pero por ahora, asumimos valores por defecto para permitir jugar si tiene tiradas (aunque un usuario nuevo no tendría tiradas compradas)
+      // Sin embargo, si es un usuario nuevo, debería tener su intento diario gratis.
+      
+      // Vamos a intentar crearlo en Firestore para poder guardar el resultado
+      try {
+        const { createUserInFirestore } = await import('../lib/firebase.js');
+        user = await createUserInFirestore({
+          id: userId,
+          tipoUsuario: 'white' // Por defecto
+        });
+        isNewUser = true;
+      } catch (createError) {
+        console.error('Error creando usuario on-the-fly:', createError);
+        return res.status(500).json({
+          error: 'Internal server error',
+          message: 'Error al inicializar usuario para el juego.'
+        });
+      }
     }
 
     // 2. Verificar permisos (Debe ser al menos DARK)
@@ -88,16 +106,15 @@ export default async function handler(req, res) {
       });
     }
 
-    if (user.tipoUsuario !== 'dark' && user.tipoUsuario !== 'black') {
-       return res.status(403).json({
-        error: 'Permission denied',
-        message: 'Necesitas ser usuario Dark para jugar.'
-      });
-    }
+    // ELIMINADO: Restricción de ser usuario Dark/Black. Ahora todos pueden jugar.
+    // if (user.tipoUsuario !== 'dark' && user.tipoUsuario !== 'black') { ... }
 
     // 3. Verificar límite diario
     const now = new Date();
-    const lastAttempt = user.lastShinyAttemptAt ? user.lastShinyAttemptAt.toDate() : null;
+    // Asegurarse de que lastAttempt sea un objeto Date válido si viene de Firestore Timestamp
+    const lastAttempt = user.lastShinyAttemptAt && typeof user.lastShinyAttemptAt.toDate === 'function'
+      ? user.lastShinyAttemptAt.toDate()
+      : (user.lastShinyAttemptAt ? new Date(user.lastShinyAttemptAt) : null);
     
     let canPlay = true;
     if (lastAttempt) {

@@ -37,10 +37,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    const user = await getUserFromFirestore(userId);
+    let user = await getUserFromFirestore(userId);
 
+    // Si el usuario no existe, asumimos que es un usuario nuevo con valores por defecto
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      user = {
+        tipoUsuario: 'white', // Por defecto
+        shinyRolls: 0,
+        lastShinyAttemptAt: null
+      };
+      // No devolvemos 404, permitimos consultar el estado "inicial"
     }
 
     // Calcular estado de tirada diaria
