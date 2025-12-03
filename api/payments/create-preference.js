@@ -153,7 +153,7 @@ export default async function handler(req, res) {
         excluded_payment_types: [
           { id: "ticket" } // Excluir pagos en efectivo (Rapipago/PagoFácil) para evitar problemas de redirección
         ],
-        installments: 1 // Forzar 1 cuota por defecto para simplificar
+        // installments: 1 // Eliminado para permitir flexibilidad y evitar errores con tarjetas que requieren cuotas
       },
       external_reference: externalReference,
       statement_descriptor: "STEEB APP",
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
         userEmail: req.body?.email || null
       },
       notification_url: `${APP_BASE_URL}/api/payments/webhook`,
-      binary_mode: true
+      binary_mode: false // Desactivado para evitar errores PXB01 en ciertos métodos de pago
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);
