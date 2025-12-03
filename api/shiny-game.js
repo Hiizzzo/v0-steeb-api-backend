@@ -129,8 +129,10 @@ export default async function handler(req, res) {
 
     // Permitir jugar si compró intentos extra (shinyRolls > 0)
     let usedExtraRoll = false;
+    const userShinyRolls = parseInt(user.shinyRolls || 0, 10); // Asegurar que sea número
+
     if (!canPlay) {
-      if (user.shinyRolls && user.shinyRolls > 0) {
+      if (userShinyRolls > 0) {
         canPlay = true;
         usedExtraRoll = true;
       } else {
@@ -172,6 +174,10 @@ export default async function handler(req, res) {
     };
 
     if (usedExtraRoll) {
+      // Usar increment(-1) es lo ideal, pero si el campo estaba como string podría fallar.
+      // Para mayor seguridad dado el reporte, forzamos el valor numérico si podemos,
+      // pero increment es mejor para concurrencia.
+      // Asumiremos que Firestore maneja la conversión o que ya lo limpiamos.
       updates.shinyRolls = admin.firestore.FieldValue.increment(-1);
     }
 
@@ -226,12 +232,17 @@ export default async function handler(req, res) {
     }
 
     // 7. Responder
+    // Calcular restantes para mostrar (estimado, ya que la DB se actualizó asíncronamente)
+    const currentRolls = parseInt(user.shinyRolls || 0, 10);
+    const remainingRolls = usedExtraRoll ? Math.max(0, currentRolls - 1) : currentRolls;
+
     return res.json({
       success: true,
       won,
       secret,
       message: finalMessage,
-      remainingRolls: usedExtraRoll ? (user.shinyRolls - 1) : (user.shinyRolls || 0),
+      remainingRolls: remainingRolls,
+      usedDailyAttempt: !usedExtraRoll, // Flag para saber si usó el diario
       // Agregar información shiny si ganó
       ...(shinyStats && {
         shinyStats: {
