@@ -142,29 +142,33 @@ export default async function handler(req, res) {
           currency_id: plan.currency || 'ARS'
         }
       ],
-      payer: payer,
+      // Simplificar payer para evitar errores de validación
+      payer: {
+        email: payer.email
+      },
       back_urls: {
         success: `https://steeb.vercel.app/payment-success`,
         pending: `https://steeb.vercel.app/payment-pending`,
         failure: `https://steeb.vercel.app/payment-failure`
       },
       auto_return: 'approved',
+      // Eliminar restricciones de métodos de pago para máxima compatibilidad
+      /*
       payment_methods: {
         excluded_payment_types: [
-          { id: "ticket" } // Excluir pagos en efectivo (Rapipago/PagoFácil) para evitar problemas de redirección
-        ],
-        // installments: 1 // Eliminado para permitir flexibilidad y evitar errores con tarjetas que requieren cuotas
+          { id: "ticket" }
+        ]
       },
+      */
       external_reference: externalReference,
       statement_descriptor: "STEEB APP",
-      // 💡 Guardar el avatar en la preferencia para que el webhook pueda acceder a él
       metadata: {
         avatar: req.body?.avatar || null,
         userName: req.body?.name || null,
         userEmail: req.body?.email || null
       },
       notification_url: `${APP_BASE_URL}/api/payments/webhook`,
-      binary_mode: false // Desactivado para evitar errores PXB01 en ciertos métodos de pago
+      binary_mode: false
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);
