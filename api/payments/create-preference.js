@@ -108,28 +108,32 @@ export default async function handler(req, res) {
 
     const externalReference = `${plan.id}_${userId || 'anon'}_${Date.now()}`;
 
-    const payer = {
-      email: email || 'test_user_123456@testuser.com' // Fallback email for testing/validation
-    };
+    // 1. Asegurar datos reales o nulos (NUNCA test_user en producción)
+    const payerEmail = email && email.includes('@') ? email : undefined;
     
-    // Fix PXB01: Mercado Pago requiere name y surname separados y válidos
-    if (name) {
-      try {
-        const parts = name.trim().split(' ');
-        if (parts.length >= 2) {
-          payer.name = parts[0];
-          payer.surname = parts.slice(1).join(' ');
-        } else {
-          payer.name = name;
-          payer.surname = 'User'; // Fallback surname para evitar error
+    let payerInfo = undefined;
+    
+    // Solo creamos el objeto payer si tenemos email real
+    if (payerEmail) {
+        payerInfo = {
+            email: payerEmail
+        };
+
+        // Agregamos nombre solo si existe
+        if (name) {
+            try {
+                const parts = name.trim().split(' ');
+                if (parts.length >= 2) {
+                    payerInfo.name = parts[0];
+                    payerInfo.surname = parts.slice(1).join(' ');
+                } else {
+                    payerInfo.name = name;
+                    payerInfo.surname = 'User';
+                }
+            } catch (e) {
+                // Si falla el parseo del nombre, mandamos solo email
+            }
         }
-      } catch (e) {
-        payer.name = name;
-        payer.surname = 'User';
-      }
-    } else {
-      payer.name = 'Steeb';
-      payer.surname = 'User';
     }
 
     const preferencePayload = {
@@ -142,10 +146,8 @@ export default async function handler(req, res) {
           currency_id: plan.currency || 'ARS'
         }
       ],
-      // Eliminar payer para que MP lo pida y evitar conflictos de "pagar a uno mismo"
-      // payer: {
-      //   email: payer.email
-      // },
+      // ENVIAR PAYER SOLO SI EXISTE
+      ...(payerInfo && { payer: payerInfo }),
       back_urls: {
         success: `https://steeb.vercel.app/payments/success`,
         pending: `https://steeb.vercel.app/payments/success`,
