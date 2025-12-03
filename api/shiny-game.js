@@ -117,6 +117,8 @@ export default async function handler(req, res) {
       : (user.lastShinyAttemptAt ? new Date(user.lastShinyAttemptAt) : null);
     
     let canPlay = true;
+    // DESHABILITADO TEMPORALMENTE: Límite diario de 24hs
+    /*
     if (lastAttempt) {
       const isToday = lastAttempt.getDate() === now.getDate() &&
                       lastAttempt.getMonth() === now.getMonth() &&
@@ -126,6 +128,7 @@ export default async function handler(req, res) {
         canPlay = false;
       }
     }
+    */
 
     // Permitir jugar si compró intentos extra (shinyRolls > 0)
     let usedExtraRoll = false;
