@@ -50,28 +50,14 @@ export default async function handler(req, res) {
     }
 
     // Calcular estado de tirada diaria
-    const now = new Date();
-    const lastAttempt = user.lastShinyAttemptAt ? user.lastShinyAttemptAt.toDate() : null;
-    
-    let dailyAttemptAvailable = true;
-    // DESHABILITADO TEMPORALMENTE: Límite diario de 24hs
-    /*
-    if (lastAttempt) {
-      const isToday = lastAttempt.getDate() === now.getDate() &&
-                      lastAttempt.getMonth() === now.getMonth() &&
-                      lastAttempt.getFullYear() === now.getFullYear();
-      
-      if (isToday) {
-        dailyAttemptAvailable = false;
-      }
-    }
-    */
+    // NO HAY INTENTO DIARIO GRATIS
+    let dailyAttemptAvailable = false;
 
     // Tiradas extra compradas
     const extraRolls = user.shinyRolls || 0;
 
     // Total disponible hoy
-    const totalAvailable = (dailyAttemptAvailable ? 1 : 0) + extraRolls;
+    const totalAvailable = extraRolls;
 
     return res.json({
       success: true,
