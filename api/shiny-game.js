@@ -117,8 +117,7 @@ export default async function handler(req, res) {
       : (user.lastShinyAttemptAt ? new Date(user.lastShinyAttemptAt) : null);
     
     let canPlay = true;
-    // DESHABILITADO TEMPORALMENTE: Límite diario de 24hs
-    /*
+    // Límite diario de 24hs
     if (lastAttempt) {
       const isToday = lastAttempt.getDate() === now.getDate() &&
                       lastAttempt.getMonth() === now.getMonth() &&
@@ -128,7 +127,6 @@ export default async function handler(req, res) {
         canPlay = false;
       }
     }
-    */
 
     // Permitir jugar si compró intentos extra (shinyRolls > 0)
     let usedExtraRoll = false;
@@ -239,6 +237,12 @@ export default async function handler(req, res) {
     const currentRolls = parseInt(user.shinyRolls || 0, 10);
     const remainingRolls = usedExtraRoll ? Math.max(0, currentRolls - 1) : currentRolls;
 
+    // Calcular tiempo para el próximo intento diario
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const msUntilTomorrow = tomorrow - now;
+
     return res.json({
       success: true,
       won,
@@ -246,6 +250,7 @@ export default async function handler(req, res) {
       message: finalMessage,
       remainingRolls: remainingRolls,
       usedDailyAttempt: !usedExtraRoll, // Flag para saber si usó el diario
+      nextAttemptIn: msUntilTomorrow,
       // Agregar información shiny si ganó
       ...(shinyStats && {
         shinyStats: {
