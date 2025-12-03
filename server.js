@@ -12,6 +12,7 @@ import steebHandler from './api/steeb.js';
 import shinyGameHandler from './api/shiny-game.js';
 import shinyStatsHandler from './api/shiny-stats.js';
 import userRoleHandler from './api/users/role.js';
+import shinyStatusHandler from './api/users/shiny-status.js';
 import consumeShinyRollHandler from './api/users/consume-shiny-roll.js';
 import createPreferenceHandler from './api/payments/create-preference.js';
 import verifyPaymentHandler from './api/payments/verify.js';
@@ -271,6 +272,9 @@ app.all('/api/shiny-stats', (req, res) => shinyStatsHandler(req, res));
 
 // User Role Handler
 app.all('/api/users/role', (req, res) => userRoleHandler(req, res));
+
+// Shiny Status Handler
+app.all('/api/users/shiny-status', (req, res) => shinyStatusHandler(req, res));
 
 // Consume Shiny Roll Handler
 app.all('/api/users/consume-shiny-roll', (req, res) => consumeShinyRollHandler(req, res));
