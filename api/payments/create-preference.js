@@ -147,9 +147,9 @@ export default async function handler(req, res) {
       //   email: payer.email
       // },
       back_urls: {
-        success: `https://steeb.vercel.app/payment-success`,
-        pending: `https://steeb.vercel.app/payment-pending`,
-        failure: `https://steeb.vercel.app/payment-failure`
+        success: `https://steeb.vercel.app/payments/success`,
+        pending: `https://steeb.vercel.app/payments/success`,
+        failure: `https://steeb.vercel.app/payments/success`
       },
       auto_return: 'approved',
       external_reference: externalReference,
