@@ -109,46 +109,17 @@ export default async function handler(req, res) {
     // ELIMINADO: Restricción de ser usuario Dark/Black. Ahora todos pueden jugar.
     // if (user.tipoUsuario !== 'dark' && user.tipoUsuario !== 'black') { ... }
 
-    // 3. Verificar límite diario
-    const now = new Date();
-    // Asegurarse de que lastAttempt sea un objeto Date válido si viene de Firestore Timestamp
-    const lastAttempt = user.lastShinyAttemptAt && typeof user.lastShinyAttemptAt.toDate === 'function'
-      ? user.lastShinyAttemptAt.toDate()
-      : (user.lastShinyAttemptAt ? new Date(user.lastShinyAttemptAt) : null);
-    
-    let canPlay = true;
-    // Límite diario de 24hs
-    if (lastAttempt) {
-      const isToday = lastAttempt.getDate() === now.getDate() &&
-                      lastAttempt.getMonth() === now.getMonth() &&
-                      lastAttempt.getFullYear() === now.getFullYear();
-      
-      if (isToday) {
-        canPlay = false;
-      }
-    }
-
-    // Permitir jugar si compró intentos extra (shinyRolls > 0)
-    let usedExtraRoll = false;
+    // 3. Verificar tiradas disponibles (NO HAY INTENTO DIARIO GRATIS)
+    // Solo se puede jugar si se tienen shinyRolls comprados
     const userShinyRolls = parseInt(user.shinyRolls || 0, 10); // Asegurar que sea número
+    let usedExtraRoll = true; // Siempre consume roll
 
-    if (!canPlay) {
-      if (userShinyRolls > 0) {
-        canPlay = true;
-        usedExtraRoll = true;
-      } else {
-        // Calcular tiempo restante
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
-        const msUntilTomorrow = tomorrow - now;
-        
-        return res.status(429).json({
-          error: 'Daily limit reached',
-          message: 'Ya usaste tu intento diario.',
-          nextAttemptIn: msUntilTomorrow
-        });
-      }
+    if (userShinyRolls <= 0) {
+      return res.status(429).json({
+        error: 'No rolls available',
+        message: 'No tienes tiradas disponibles. Debes comprar más para jugar.',
+        nextAttemptIn: null // No hay tiempo de espera, solo comprar
+      });
     }
 
     // 4. Generar número secreto y comparar
@@ -237,20 +208,14 @@ export default async function handler(req, res) {
     const currentRolls = parseInt(user.shinyRolls || 0, 10);
     const remainingRolls = usedExtraRoll ? Math.max(0, currentRolls - 1) : currentRolls;
 
-    // Calcular tiempo para el próximo intento diario
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    const msUntilTomorrow = tomorrow - now;
-
     return res.json({
       success: true,
       won,
       secret,
       message: finalMessage,
       remainingRolls: remainingRolls,
-      usedDailyAttempt: !usedExtraRoll, // Flag para saber si usó el diario
-      nextAttemptIn: msUntilTomorrow,
+      usedDailyAttempt: false, // Nunca usa diario
+      nextAttemptIn: null, // No hay próximo intento gratis
       // Agregar información shiny si ganó
       ...(shinyStats && {
         shinyStats: {
