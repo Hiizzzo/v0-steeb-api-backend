@@ -142,24 +142,16 @@ export default async function handler(req, res) {
           currency_id: plan.currency || 'ARS'
         }
       ],
-      // Simplificar payer para evitar errores de validación
-      payer: {
-        email: payer.email
-      },
+      // Eliminar payer para que MP lo pida y evitar conflictos de "pagar a uno mismo"
+      // payer: {
+      //   email: payer.email
+      // },
       back_urls: {
         success: `https://steeb.vercel.app/payment-success`,
         pending: `https://steeb.vercel.app/payment-pending`,
         failure: `https://steeb.vercel.app/payment-failure`
       },
       auto_return: 'approved',
-      // Eliminar restricciones de métodos de pago para máxima compatibilidad
-      /*
-      payment_methods: {
-        excluded_payment_types: [
-          { id: "ticket" }
-        ]
-      },
-      */
       external_reference: externalReference,
       statement_descriptor: "STEEB APP",
       metadata: {
