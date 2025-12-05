@@ -676,7 +676,8 @@ app.post('/payments/create-preference', async (req, res) => {
           { id: "ticket" } // Excluir pagos en efectivo (Rapipago/PagoFácil) para evitar problemas de redirección
         ],
         installments: 1 // Forzar 1 cuota por defecto para simplificar
-      }
+      },
+      binary_mode: true
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);

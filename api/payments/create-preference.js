@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const MERCADOPAGO_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
-const IS_SANDBOX = MERCADOPAGO_ACCESS_TOKEN.startsWith('APP_USR-'); // Detectar si son credenciales de sandbox
+const IS_SANDBOX = !MERCADOPAGO_ACCESS_TOKEN.startsWith('APP_USR-'); // Detectar si son credenciales de sandbox (APP_USR es prod)
 const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || `https://v0-steeb-api-backend-production.up.railway.app`;
 
 const paymentPlansPath = path.join(__dirname, '..', '..', 'config', 'paymentPlans.json');
@@ -28,8 +28,12 @@ try {
 const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_ACCESS_TOKEN });
 
 const createPreference = async (preferenceData) => {
-  // 🚀 PRODUCCIÓN: Eliminar sandbox - usar credenciales de producción
-  console.log('🚀 MODO PRODUCCIÓN - Credenciales:', MERCADOPAGO_ACCESS_TOKEN.substring(0, 20) + '...');
+  // 🚀 LOGGEAR MODO ACTUAL
+  if (IS_SANDBOX) {
+    console.log('🧪 MODO SANDBOX - Usando credenciales de prueba');
+  } else {
+    console.log('🚀 MODO PRODUCCIÓN - Credenciales reales:', MERCADOPAGO_ACCESS_TOKEN.substring(0, 20) + '...');
+  }
 
   // 🔍 DEBUG: Log completo de preferencia para debuggear PXB01
   console.log('🔍 DEBUG - Request payload:', JSON.stringify(preferenceData, null, 2));
@@ -42,9 +46,7 @@ const createPreference = async (preferenceData) => {
   console.log('📱 DEBUG - Sandbox Init Point:', result.sandbox_init_point);
   console.log('💰 DEBUG - External Reference:', result.external_reference);
 
-  // 🎯 PRODUCCIÓN: Usar URLs originales de Mercado Pago (ya son HTTPS)
-  console.log('🔗 URL de producción final:', result.init_point);
-
+  // 🎯 Retornar resultado completo
   return result;
 };
 
@@ -110,30 +112,30 @@ export default async function handler(req, res) {
 
     // 1. Asegurar datos reales o nulos (NUNCA test_user en producción)
     const payerEmail = email && email.includes('@') ? email : undefined;
-    
+
     let payerInfo = undefined;
-    
+
     // Solo creamos el objeto payer si tenemos email real
     if (payerEmail) {
-        payerInfo = {
-            email: payerEmail
-        };
+      payerInfo = {
+        email: payerEmail
+      };
 
-        // Agregamos nombre solo si existe
-        if (name) {
-            try {
-                const parts = name.trim().split(' ');
-                if (parts.length >= 2) {
-                    payerInfo.name = parts[0];
-                    payerInfo.surname = parts.slice(1).join(' ');
-                } else {
-                    payerInfo.name = name;
-                    payerInfo.surname = 'User';
-                }
-            } catch (e) {
-                // Si falla el parseo del nombre, mandamos solo email
-            }
+      // Agregamos nombre solo si existe
+      if (name) {
+        try {
+          const parts = name.trim().split(' ');
+          if (parts.length >= 2) {
+            payerInfo.name = parts[0];
+            payerInfo.surname = parts.slice(1).join(' ');
+          } else {
+            payerInfo.name = name;
+            payerInfo.surname = 'User';
+          }
+        } catch (e) {
+          // Si falla el parseo del nombre, mandamos solo email
         }
+      }
     }
 
     const preferencePayload = {
@@ -162,7 +164,7 @@ export default async function handler(req, res) {
         userEmail: req.body?.email || null
       },
       notification_url: `${APP_BASE_URL}/api/payments/webhook`,
-      binary_mode: false
+      binary_mode: true
     };
 
     console.log('📤 Creating preference with payload:', preferencePayload);
