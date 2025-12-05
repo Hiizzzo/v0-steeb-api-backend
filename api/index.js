@@ -582,11 +582,11 @@ app.get(['/steeb-status', '/api/steeb-status'], (req, res) => {
 
     let isSleeping = false;
 
-    // Friday (5) and Saturday (6): 3:00 AM to 9:59 AM
-    if (dayOfWeek === 5 || dayOfWeek === 6) {
+    // Saturday (6) and Sunday (0): After Friday/Saturday nights - sleep 3:00 AM to 9:59 AM
+    if (dayOfWeek === 6 || dayOfWeek === 0) {
       isSleeping = hour >= 3 && hour < 10;
     } else {
-      // Other days: 0:00 AM to 7:59 AM
+      // Other days (Mon-Fri mornings): 0:00 AM to 7:59 AM
       isSleeping = hour >= 0 && hour < 8;
     }
 
