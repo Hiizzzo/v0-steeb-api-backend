@@ -74,7 +74,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     // 1. Obtener usuario
     console.log(`🔍 Fetching user from Firestore: ${userId}`);
     const user = await getUserFromFirestore(userId);
-    
+
     if (!user) {
       console.error(`❌ User not found in Firestore: ${userId}`);
       return res.status(404).json({
@@ -94,7 +94,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     }
 
     if (user.tipoUsuario !== 'dark' && user.tipoUsuario !== 'black') {
-       return res.status(403).json({
+      return res.status(403).json({
         error: 'Permission denied',
         message: 'Necesitas ser usuario Dark para jugar.'
       });
@@ -103,14 +103,14 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     // 3. Verificar límite diario (24 horas exactas)
     const now = new Date();
     const lastAttempt = user.lastShinyAttemptAt ? user.lastShinyAttemptAt.toDate() : null;
-    
+
     let canPlay = true;
     let msUntilNextAttempt = 0;
 
     if (lastAttempt) {
       const diffMs = now.getTime() - lastAttempt.getTime();
       const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-      
+
       if (diffMs < twentyFourHoursMs) {
         canPlay = false;
         msUntilNextAttempt = twentyFourHoursMs - diffMs;
@@ -127,7 +127,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
         // Calcular tiempo restante formateado
         const hours = Math.floor(msUntilNextAttempt / (1000 * 60 * 60));
         const minutes = Math.floor((msUntilNextAttempt % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         return res.status(429).json({
           error: 'Daily limit reached',
           message: `Ya usaste tu intento diario. Podrás jugar de nuevo en ${hours}h ${minutes}m.`,
@@ -140,14 +140,14 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     const secret = Math.floor(Math.random() * 100) + 1;
     const won = guessNum === secret;
     const diff = Math.abs(guessNum - secret);
-    
+
     let hint = '';
     if (!won) {
       if (diff <= 5) hint = '¡Uff! Estuviste MUY cerca... 🔥';
       else if (diff <= 10) hint = 'Casi... Estás cerca. 🌡️';
       else if (diff <= 20) hint = 'Ni frío ni calor. 😐';
       else hint = 'Lejos, muy lejos... ❄️';
-      
+
       hint += ` (Era el ${secret})`;
     }
 
@@ -570,6 +570,42 @@ app.get('/health', (req, res) => {
 });
 
 // ================================
+// STEEB STATUS (SLEEP MODE) - Server-side time check
+// ================================
+app.get(['/steeb-status', '/api/steeb-status'], (req, res) => {
+  try {
+    const now = new Date();
+    // Get Argentina time (UTC-3)
+    const argentinaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+    const hour = argentinaTime.getHours();
+    const dayOfWeek = argentinaTime.getDay(); // 0=Sunday, 5=Friday, 6=Saturday
+
+    let isSleeping = false;
+
+    // Friday (5) and Saturday (6): 3:00 AM to 9:59 AM
+    if (dayOfWeek === 5 || dayOfWeek === 6) {
+      isSleeping = hour >= 3 && hour < 10;
+    } else {
+      // Other days: 0:00 AM to 7:59 AM
+      isSleeping = hour >= 0 && hour < 8;
+    }
+
+    console.log(`😴 Steeb Status: ${isSleeping ? 'SLEEPING' : 'AWAKE'} (Hour: ${hour}, Day: ${dayOfWeek})`);
+
+    return res.json({
+      success: true,
+      isSleeping,
+      serverTime: argentinaTime.toISOString(),
+      hour,
+      dayOfWeek
+    });
+  } catch (error) {
+    console.error('❌ Steeb Status Error:', error);
+    return res.status(500).json({ error: 'Internal server error', isSleeping: false });
+  }
+});
+
+// ================================
 // MERCADO PAGO ENDPOINTS (PRODUCCIÓN)
 // ================================
 
@@ -598,7 +634,7 @@ app.post('/payments/create-preference', async (req, res) => {
     const payer = {
       email: email || 'test_user_123456@testuser.com'
     };
-    
+
     // Fix PXB01: Mercado Pago requiere name y surname separados y válidos
     if (name) {
       try {
@@ -897,7 +933,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     }
 
     if (user.tipoUsuario !== 'dark' && user.tipoUsuario !== 'black') {
-       return res.status(403).json({
+      return res.status(403).json({
         error: 'Permission denied',
         message: 'Necesitas ser usuario Dark para jugar.'
       });
@@ -906,13 +942,13 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     // 3. Verificar límite diario
     const now = new Date();
     const lastAttempt = user.lastShinyAttemptAt ? user.lastShinyAttemptAt.toDate() : null;
-    
+
     let canPlay = true;
     if (lastAttempt) {
       const isToday = lastAttempt.getDate() === now.getDate() &&
-                      lastAttempt.getMonth() === now.getMonth() &&
-                      lastAttempt.getFullYear() === now.getFullYear();
-      
+        lastAttempt.getMonth() === now.getMonth() &&
+        lastAttempt.getFullYear() === now.getFullYear();
+
       if (isToday) {
         canPlay = false;
       }
@@ -930,7 +966,7 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
         const msUntilTomorrow = tomorrow - now;
-        
+
         return res.status(429).json({
           error: 'Daily limit reached',
           message: 'Ya usaste tu intento diario.',
@@ -943,14 +979,14 @@ app.post(['/shiny-game', '/api/shiny-game'], async (req, res) => {
     const secret = Math.floor(Math.random() * 100) + 1;
     const won = guessNum === secret;
     const diff = Math.abs(guessNum - secret);
-    
+
     let hint = '';
     if (!won) {
       if (diff <= 5) hint = '¡Uff! Estuviste MUY cerca... 🔥';
       else if (diff <= 10) hint = 'Casi... Estás cerca. 🌡️';
       else if (diff <= 20) hint = 'Ni frío ni calor. 😐';
       else hint = 'Lejos, muy lejos... ❄️';
-      
+
       hint += ` (Era el ${secret})`;
     }
 
