@@ -18,6 +18,13 @@ import createPreferenceHandler from './api/payments/create-preference.js';
 import verifyPaymentHandler from './api/payments/verify.js';
 import paymentStatusHandler from './api/payments/status.js';
 import webhookHandler from './api/payments/webhook.js';
+import {
+  pushIsConfigured,
+  saveSubscription,
+  sendTestPush,
+  startDailyPushScheduler,
+  validatePushSecret
+} from './lib/pushService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -170,6 +177,50 @@ app.get('/api/images', (req, res) => {
 });
 
 // ================================
+// WEB PUSH ENDPOINTS
+// ================================
+
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    if (!pushIsConfigured()) {
+      return res.status(503).json({ error: 'Web Push no configurado en el backend' });
+    }
+
+    const { subscription, userId, timezone, userAgent } = req.body || {};
+    if (!subscription?.endpoint) {
+      return res.status(400).json({ error: 'Suscripcion invalida' });
+    }
+
+    const meta = {
+      userId: userId || null,
+      timezone: timezone || req.headers['x-timezone'] || null,
+      userAgent: userAgent || req.headers['user-agent'] || null
+    };
+
+    await saveSubscription(subscription, meta);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error guardando suscripcion push:', error);
+    res.status(500).json({ error: 'No se pudo guardar la suscripcion push' });
+  }
+});
+
+app.post('/api/push/test', async (req, res) => {
+  try {
+    if (!validatePushSecret(req.body?.secret || req.query?.secret)) {
+      return res.status(401).json({ error: 'Secret invalido para test push' });
+    }
+
+    const { title, body } = req.body || {};
+    const result = await sendTestPush(title || 'Push de prueba STEEB', body || 'Probando notificaciones push');
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error enviando push de prueba:', error);
+    res.status(500).json({ error: 'No se pudo enviar el push de prueba' });
+  }
+});
+
+// ================================
 // HEALTH CHECK ENDPOINT
 // ================================
 
@@ -287,6 +338,8 @@ app.get('/', (req, res) => {
 
 // Fallback para Health Checks agresivos de Railway que busquen /health o similar
 app.get('/health', (req, res) => res.status(200).send('OK'));
+
+startDailyPushScheduler();
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor STEEB corriendo en http://0.0.0.0:${PORT}`);
