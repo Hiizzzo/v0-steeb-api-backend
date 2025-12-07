@@ -23,6 +23,7 @@ import {
   saveSubscription,
   sendTestPush,
   startDailyPushScheduler,
+  recordUserEngagement,
   validatePushSecret
 } from './lib/pushService.js';
 
@@ -217,6 +218,21 @@ app.post('/api/push/test', async (req, res) => {
   } catch (error) {
     console.error('Error enviando push de prueba:', error);
     res.status(500).json({ error: 'No se pudo enviar el push de prueba' });
+  }
+});
+
+app.post('/api/push/engagement', async (req, res) => {
+  try {
+    const { userId, timezone, occurredAt } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ error: 'userId es requerido para registrar engagement' });
+    }
+
+    await recordUserEngagement(userId, timezone, occurredAt ? new Date(occurredAt) : new Date());
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error registrando engagement:', error);
+    res.status(500).json({ error: 'No se pudo registrar el engagement' });
   }
 });
 
