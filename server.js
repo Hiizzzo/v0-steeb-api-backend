@@ -347,6 +347,14 @@ app.all('/api/users/shiny-status', (req, res) => shinyStatusHandler(req, res));
 app.all('/api/users/consume-shiny-roll', (req, res) => consumeShinyRollHandler(req, res));
 
 // Endpoint raíz para Health Checks de Railway (y cualquier otra ruta no definida para evitar 404 en health checks)
+app.get('/api/welcome', (req, res) => {
+  res.status(200).json({
+    title: '¡Bienvenido a STEEB!',
+    subtitle: 'El niño prodigio que te salvará',
+    brand: 'STEEB'
+  });
+});
+
 app.get('/', (req, res) => {
   console.log('💓 Health Check recibido en /');
   res.status(200).send('✅ STEEB API Backend is running');
