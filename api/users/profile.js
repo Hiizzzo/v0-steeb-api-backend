@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { availabilityNote, busyLevel, morningPlan, afternoonPlan, nightPlan, transcriptText } = req.body || {};
+      const { availabilityNote, busyLevel, morningPlan, afternoonPlan, nightPlan, transcriptText, name, nickname } = req.body || {};
       const updates = {
         ...(availabilityNote !== undefined && { availabilityNote }),
         ...(busyLevel !== undefined && { busyLevel }),
@@ -34,6 +34,8 @@ export default async function handler(req, res) {
         ...(afternoonPlan !== undefined && { afternoonPlan }),
         ...(nightPlan !== undefined && { nightPlan }),
         ...(transcriptText !== undefined && { transcriptText }),
+        ...(name !== undefined && { name, nombre: name }), // Save both for compatibility
+        ...(nickname !== undefined && { nickname, apodo: nickname }), // Save both for compatibility
         availabilityUpdatedAt: new Date().toISOString()
       };
 
