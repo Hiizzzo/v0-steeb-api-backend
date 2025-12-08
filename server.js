@@ -5,9 +5,9 @@ import fs from 'fs';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import crypto from 'crypto';
 import 'dotenv/config';
 import { startGlobalStatsWatcher } from './lib/globalStatsWatcher.js';
+import { createTaskStore } from './server/taskStore.js';
 import steebHandler from './api/steeb.js';
 import shinyGameHandler from './api/shiny-game.js';
 import shinyStatsHandler from './api/shiny-stats.js';
@@ -42,6 +42,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'; // Def
 startGlobalStatsWatcher().catch((error) => {
   console.error('[GlobalStats] Failed to start watcher', error);
 });
+
+const taskStore = createTaskStore();
 
 // Configurar CORS y JSON
 app.use(cors({
@@ -174,6 +176,78 @@ app.get('/api/images', (req, res) => {
   } catch (error) {
     console.error('Error listing images:', error);
     res.status(500).json({ error: 'Error al listar imágenes' });
+  }
+});
+
+// ================================
+// TASKS WITH SUBTASKS & QA
+// ================================
+app.post('/api/tasks', (req, res) => {
+  try {
+    const task = taskStore.createTask(req.body || {}, req.body?.updated_by);
+    return res.status(201).json({ task });
+  } catch (error) {
+    console.error('Error creating task:', error);
+    return res.status(400).json({ error: error.message || 'No se pudo crear la tarea' });
+  }
+});
+
+app.patch('/api/tasks/:taskId', (req, res) => {
+  try {
+    const task = taskStore.updateTask(req.params.taskId, req.body || {}, req.body?.updated_by);
+    return res.json({ task });
+  } catch (error) {
+    console.error(`Error updating task ${req.params.taskId}:`, error);
+    const statusCode = error.message === 'Task not found' ? 404 : 400;
+    return res.status(statusCode).json({ error: error.message || 'No se pudo actualizar la tarea' });
+  }
+});
+
+app.post('/api/tasks/:taskId/acceptance', (req, res) => {
+  try {
+    const task = taskStore.setAcceptance(req.params.taskId, req.body || {}, req.body?.updated_by);
+    return res.json({ task });
+  } catch (error) {
+    console.error(`Error updating acceptance for task ${req.params.taskId}:`, error);
+    const statusCode = error.message === 'Task not found' ? 404 : 400;
+    return res.status(statusCode).json({ error: error.message || 'No se pudo registrar el QA' });
+  }
+});
+
+app.post('/api/tasks/:taskId/dependencies', (req, res) => {
+  try {
+    const dependencies = Array.isArray(req.body?.dependencies) ? req.body.dependencies : [];
+    const task = taskStore.setDependencies(req.params.taskId, dependencies, req.body?.updated_by);
+    return res.json({ task });
+  } catch (error) {
+    console.error(`Error updating dependencies for task ${req.params.taskId}:`, error);
+    const statusCode = error.message === 'Task not found' ? 404 : 400;
+    return res.status(statusCode).json({ error: error.message || 'No se pudieron actualizar las dependencias' });
+  }
+});
+
+app.get('/api/tasks', (req, res) => {
+  try {
+    const maxDepth = Number(req.query.depth) || 3;
+    const tasks = taskStore.listTasks(req.query.parent_task_id || null, maxDepth);
+    return res.json({ tasks });
+  } catch (error) {
+    console.error('Error listing tasks:', error);
+    return res.status(500).json({ error: 'No se pudieron obtener las tareas' });
+  }
+});
+
+app.get('/api/tasks/:taskId', (req, res) => {
+  try {
+    const maxDepth = Number(req.query.depth) || 3;
+    const task = taskStore.getTask(req.params.taskId, maxDepth);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    return res.json({ task });
+  } catch (error) {
+    console.error(`Error fetching task ${req.params.taskId}:`, error);
+    return res.status(500).json({ error: 'No se pudo obtener la tarea' });
   }
 });
 
