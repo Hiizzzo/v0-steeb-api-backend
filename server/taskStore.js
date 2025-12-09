@@ -55,6 +55,18 @@ const defaultAudit = (updatedBy) => {
   };
 };
 
+const normalizeScheduleLog = (events = []) => {
+  return events.map((event) => ({
+    id: event.id || crypto.randomUUID(),
+    type: event.type || 'update',
+    note: event.note || null,
+    from: event.from || null,
+    to: event.to || null,
+    updated_by: event.updated_by || null,
+    at: event.at || new Date().toISOString()
+  }));
+};
+
 const normalizeChecklist = (checklist = []) => {
   return checklist.map((item, index) => {
     if (typeof item === 'string') {
@@ -219,6 +231,12 @@ export const createTaskStore = () => {
         dependencies: payload.dependencies || [],
         labels: payload.labels || [],
         type: payload.type || null,
+        scheduled_date: payload.scheduled_date || null,
+        scheduled_time: payload.scheduled_time || null,
+        scheduled_with_time: payload.scheduled_with_time ?? false,
+        next_schedule_time: payload.next_schedule_time || null,
+        timezone: payload.timezone || null,
+        schedule_log: normalizeScheduleLog(payload.schedule_log),
         progress: 0,
         qa: payload.qa || { approved: false, evidence: [], notes: null, qa_user: null, qa_at: null },
         audit: payload.audit || defaultAudit(updatedBy || payload.owner)
@@ -259,6 +277,41 @@ export const createTaskStore = () => {
       updatedTask.dependencies = Array.isArray(updates.dependencies) ? updates.dependencies : updatedTask.dependencies;
       updatedTask.labels = Array.isArray(updates.labels) ? updates.labels : updatedTask.labels;
       updatedTask.type = updates.type ?? updatedTask.type;
+
+      const scheduleFields = [
+        'scheduled_date',
+        'scheduled_time',
+        'scheduled_with_time',
+        'next_schedule_time',
+        'timezone'
+      ];
+
+      const scheduleBefore = scheduleFields.reduce((acc, field) => ({ ...acc, [field]: updatedTask[field] ?? null }), {});
+      let scheduleChanged = false;
+
+      scheduleFields.forEach((field) => {
+        if (updates[field] !== undefined) {
+          updatedTask[field] = updates[field];
+          scheduleChanged = scheduleChanged || updates[field] !== scheduleBefore[field];
+        }
+      });
+
+      if (Array.isArray(updates.schedule_log)) {
+        updatedTask.schedule_log = normalizeScheduleLog(updates.schedule_log);
+      }
+
+      if (scheduleChanged) {
+        updatedTask.schedule_log = normalizeScheduleLog([
+          ...(updatedTask.schedule_log || []),
+          {
+            type: 'schedule_update',
+            from: scheduleBefore,
+            to: scheduleFields.reduce((acc, field) => ({ ...acc, [field]: updatedTask[field] ?? null }), {}),
+            updated_by: updatedBy || updates.updated_by || updatedTask.audit?.updated_by || null,
+            at: new Date().toISOString()
+          }
+        ]);
+      }
 
       if (updates.acceptance_criteria) {
         updatedTask.acceptance_criteria = normalizeAcceptanceCriteria(updates.acceptance_criteria);
