@@ -3,6 +3,7 @@ import { getSteebEmotion } from '../lib/steebEmotions.js';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const ENABLE_ONBOARDING_PROMPT = process.env.ENABLE_ONBOARDING_PROMPT === 'true';
 
 // Configuración del sistema STEEB
 const DAILY_MESSAGE_LIMIT = 50;
@@ -237,7 +238,7 @@ export default async function handler(req, res) {
     // Enviar emoción detectada antes del contenido para que el frontend pueda cambiar el avatar
     res.write(`data: ${JSON.stringify({ emotion })}\n\n`);
 
-    if (!userState.onboardingRequested) {
+    if (ENABLE_ONBOARDING_PROMPT && !userState.onboardingRequested) {
       const backendContext = context ? JSON.stringify(context).slice(0, 400) : 'sin datos visibles aún';
       const onboardingPrompt = `Antes de seguir quiero conectarme con vos y lo que veo en backend (${backendContext}). Contame en un solo mensaje: 1) ¿A qué te dedicás? 2) ¿Qué estás buscando lograr con Steeb? 3) ¿Cuál es tu visión de vos a futuro? 4) ¿Steeb necesita ser salvado? (sí/no). Así puedo ayudarte mejor.`;
       userState.onboardingRequested = true;
@@ -249,7 +250,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (userState.onboardingRequested && !userState.onboardingComplete) {
+    if (ENABLE_ONBOARDING_PROMPT && userState.onboardingRequested && !userState.onboardingComplete) {
       const rescueAnswer = detectRescueIntent(message);
       userState.onboardingComplete = true;
       userState.profileSummary = message.trim();
