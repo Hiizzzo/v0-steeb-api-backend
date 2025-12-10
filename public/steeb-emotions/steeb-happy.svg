@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Steeb feliz">
+  <defs>
+    <linearGradient id="happy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a7f3d0"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="58" fill="url(#happy)" stroke="#065f46" stroke-width="4"/>
+  <circle cx="45" cy="55" r="8" fill="#064e3b"/>
+  <circle cx="75" cy="55" r="8" fill="#064e3b"/>
+  <path d="M38 70 Q60 90 82 70" fill="none" stroke="#065f46" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="30" r="12" fill="#ecfeff" stroke="#065f46" stroke-width="3"/>
+</svg>
