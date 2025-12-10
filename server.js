@@ -19,6 +19,7 @@ import verifyPaymentHandler from './api/payments/verify.js';
 import paymentStatusHandler from './api/payments/status.js';
 import webhookHandler from './api/payments/webhook.js';
 import {
+  getPublicPushConfig,
   pushIsConfigured,
   saveSubscription,
   sendTestPush,
@@ -255,6 +256,16 @@ app.get('/api/tasks/:taskId', (req, res) => {
 // ================================
 // WEB PUSH ENDPOINTS
 // ================================
+
+app.get('/api/push/config', (req, res) => {
+  try {
+    const config = getPublicPushConfig();
+    res.json({ success: true, ...config });
+  } catch (error) {
+    console.error('Error obteniendo configuracion push:', error);
+    res.status(500).json({ error: 'No se pudo obtener la configuracion push' });
+  }
+});
 
 app.post('/api/push/subscribe', async (req, res) => {
   try {
