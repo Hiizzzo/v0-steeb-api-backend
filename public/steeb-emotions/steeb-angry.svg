@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Steeb enojado">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff8a80"/>
+      <stop offset="100%" stop-color="#ff5252"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="58" fill="url(#bg)" stroke="#7f1d1d" stroke-width="4"/>
+  <path d="M30 48 Q45 40 60 48" fill="none" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
+  <path d="M90 48 Q75 40 60 48" fill="none" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="45" cy="60" r="8" fill="#1f2937"/>
+  <circle cx="75" cy="60" r="8" fill="#1f2937"/>
+  <path d="M40 88 Q60 72 80 88" fill="none" stroke="#7f1d1d" stroke-width="8" stroke-linecap="round"/>
+</svg>
