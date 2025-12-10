@@ -149,6 +149,7 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
 
 // Servir archivos estáticos
 app.use('/lovable-uploads', express.static(path.join(__dirname, 'public', 'lovable-uploads')));
+app.use('/steeb-emotions', express.static(path.join(__dirname, 'public', 'steeb-emotions')));
 
 // Listar imágenes
 app.get('/api/images', (req, res) => {

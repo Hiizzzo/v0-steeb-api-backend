@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Steeb triste">
+  <defs>
+    <linearGradient id="sad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#bfdbfe"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="58" fill="url(#sad)" stroke="#1d4ed8" stroke-width="4"/>
+  <circle cx="45" cy="55" r="8" fill="#1e3a8a"/>
+  <circle cx="75" cy="55" r="8" fill="#1e3a8a"/>
+  <path d="M38 82 Q60 68 82 82" fill="none" stroke="#1d4ed8" stroke-width="7" stroke-linecap="round"/>
+  <path d="M45 63 Q43 74 36 76" fill="none" stroke="#1d4ed8" stroke-width="4" stroke-linecap="round"/>
+</svg>
