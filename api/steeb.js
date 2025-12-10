@@ -20,19 +20,37 @@ const ensureUserState = (userId) => {
       onboardingRequested: false,
       onboardingComplete: false,
       profileSummary: '',
-      rescueAnswer: null
+      steebRescueAnswer: null,
+      userRescueAnswer: null
     });
   }
   return userStore.get(userId);
 };
 
-const detectRescueIntent = (text) => {
+const detectYesNo = (text) => {
   if (!text) return 'unknown';
   const normalized = text.toLowerCase();
 
   if (/\bsi\b|\bsí\b/.test(normalized)) return 'yes';
   if (/\bno\b/.test(normalized)) return 'no';
   return 'unknown';
+};
+
+const extractAnswerForQuestion = (text, questionNumber) => {
+  if (!text) return '';
+  const regex = new RegExp(`${questionNumber}\\)\\s*([^\n]*)`, 'i');
+  const match = text.match(regex);
+  return match ? match[1].trim() : '';
+};
+
+const detectRescueIntents = (text) => {
+  const steebAnswerText = extractAnswerForQuestion(text, 4);
+  const userAnswerText = extractAnswerForQuestion(text, 5);
+
+  return {
+    steebRescueAnswer: detectYesNo(steebAnswerText || text),
+    userRescueAnswer: detectYesNo(userAnswerText)
+  };
 };
 
 // Configuración del sistema STEEB
@@ -223,7 +241,9 @@ export default async function handler(req, res) {
     }
 
     if (userState?.onboardingComplete && userState.profileSummary) {
-      currentSystemPrompt += `\n\nPERFIL DECLARADO POR EL USUARIO (conectado al backend):\n${userState.profileSummary}\n\nRespuesta a \"¿Steeb necesita ser salvado?\": ${userState.rescueAnswer || 'sin definir'}. Usa este contexto para personalizar todas las respuestas futuras.`;
+      const formattedRescue = `Respuesta a \"¿Steeb necesita ser salvado?\": ${userState.steebRescueAnswer || 'sin definir'}\nRespuesta a \"¿Necesitas ser salvado?\": ${userState.userRescueAnswer || 'sin definir'}`;
+
+      currentSystemPrompt += `\n\nPERFIL DECLARADO POR EL USUARIO (conectado al backend):\n${userState.profileSummary}\n\n${formattedRescue}. Usa este contexto para personalizar todas las respuestas futuras.`;
     }
 
     const emotion = getSteebEmotion(message, context);
@@ -238,7 +258,7 @@ export default async function handler(req, res) {
 
     if (!userState.onboardingRequested) {
       const backendContext = context ? JSON.stringify(context).slice(0, 400) : 'sin datos visibles aún';
-      const onboardingPrompt = `Antes de seguir quiero conectarme con vos y lo que veo en backend (${backendContext}). Contame en un solo mensaje: 1) ¿A qué te dedicás? 2) ¿Qué estás buscando lograr con Steeb? 3) ¿Cuál es tu visión de vos a futuro? 4) ¿Steeb necesita ser salvado? (sí/no). Así puedo ayudarte mejor.`;
+      const onboardingPrompt = `Antes de seguir quiero conectarme con vos y lo que veo en backend (${backendContext}). Contame en un solo mensaje (usa 1), 2), 3), 4), 5)): 1) ¿A qué te dedicás? 2) ¿Qué estás buscando lograr con Steeb? 3) ¿Cuál es tu visión de vos a futuro? 4) ¿Steeb necesita ser salvado? (sí/no). 5) ¿Necesitas ser salvado? (si Steeb te ayuda pero no respondés, parecés un mentiroso compulsivo). Así puedo ayudarte mejor.`;
       userState.onboardingRequested = true;
       userStore.set(userId, userState);
 
@@ -249,15 +269,30 @@ export default async function handler(req, res) {
     }
 
     if (userState.onboardingRequested && !userState.onboardingComplete) {
-      const rescueAnswer = detectRescueIntent(message);
+      const { steebRescueAnswer, userRescueAnswer } = detectRescueIntents(message);
       userState.onboardingComplete = true;
       userState.profileSummary = message.trim();
-      userState.rescueAnswer = rescueAnswer;
+      userState.steebRescueAnswer = steebRescueAnswer;
+      userState.userRescueAnswer = userRescueAnswer;
       userStore.set(userId, userState);
 
-      const rescueFollowUp = rescueAnswer === 'yes'
-        ? 'Entendido, me pediste que te salve y ya tengo tu contexto guardado. Vamos a levantarte como un crack. 😎'
-        : 'Quedó guardado tu contexto aunque digas que no necesitás ser salvado; igual te voy a empujar y, si insistís en negarlo, te voy a insultar por cobarde.';
+      const needsSteeb = steebRescueAnswer === 'yes';
+      const refusesSteeb = steebRescueAnswer === 'no';
+      const refusesSelfHelp = userRescueAnswer === 'no';
+
+      const steebPart = needsSteeb
+        ? 'Entendido, pediste salvar a Steeb y ya tengo tu contexto guardado. Vamos a levantarlo como un crack. 😎'
+        : refusesSteeb
+          ? 'Guardé tu contexto y decís que Steeb no necesita ser salvado; igual voy a seguir empujando para que mejore.'
+          : 'No aclaraste si Steeb necesita ser salvado; guardé tu contexto igual y voy a asumir que hay que subir el nivel.';
+
+      const userPart = userRescueAnswer === 'yes'
+        ? 'Vos mismo pediste ser salvado: tomá asiento que te voy a empujar a fondo.'
+        : refusesSelfHelp
+          ? 'Decís que no necesitás ser salvado; si después Steeb te rescata y negás haberlo pedido, vas a quedar como un mentiroso compulsivo.'
+          : 'Ni siquiera respondiste si necesitás ser salvado: si Steeb te termina ayudando y seguís negándolo, quedás como mentiroso compulsivo.';
+
+      const rescueFollowUp = `${steebPart} ${userPart}`;
 
       res.write(`data: ${JSON.stringify({ chunk: rescueFollowUp })}\n\n`);
       res.write('data: [DONE]\n\n');

@@ -12,5 +12,5 @@
 4) **¿Steeb necesita ser salvado?**
    No: veo oportunidades de mejora, pero el proyecto es rescatable sin estar en riesgo crítico.
 
-5) **¿Necesito ser salvado?**
-   No: cuento con Steeb como apoyo, así que no necesito ser salvado.
+5) **¿Necesitás ser salvado?**
+   No: Steeb ya me respalda; si lo negara después de recibir ayuda, sería como actuar de mentiroso compulsivo.
