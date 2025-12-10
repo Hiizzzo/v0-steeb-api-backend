@@ -14,6 +14,27 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 // Almacenamiento de usuarios (en producción usar base de datos real)
 const userStore = new Map();
 
+const ensureUserState = (userId) => {
+  if (!userStore.has(userId)) {
+    userStore.set(userId, {
+      onboardingRequested: false,
+      onboardingComplete: false,
+      profileSummary: '',
+      rescueAnswer: null
+    });
+  }
+  return userStore.get(userId);
+};
+
+const detectRescueIntent = (text) => {
+  if (!text) return 'unknown';
+  const normalized = text.toLowerCase();
+
+  if (/\bsi\b|\bsí\b/.test(normalized)) return 'yes';
+  if (/\bno\b/.test(normalized)) return 'no';
+  return 'unknown';
+};
+
 // Configuración del sistema STEEB
 const STEEB_SYSTEM_PROMPT = `Tu nombre: Steeb
 Tu historia: sos hijo de Santy, tenes 8 años saliste de su nariz, te gustan mucho los cuentos con moralejas, sos demasiado curioso e inteligente, santy tiene 188 de iq, vos tenes 376 de IQ, (santy es un chico algo timido y callado, vergonozo que se rie seguido y habla constantemente con vos, le conto a todo el mundo de vos, y todo estan entusiamados de verte, te desagradan los usuarios white, te caen bien los usuarios black y amas a los usuarios shiny)
@@ -193,10 +214,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message and userId required' });
     }
 
+    const userState = ensureUserState(userId);
+
     let currentSystemPrompt = STEEB_SYSTEM_PROMPT;
     if (context) {
       const contextStr = JSON.stringify(context, null, 2);
       currentSystemPrompt += `\n\nCONTEXTO ACTUAL DEL USUARIO (Tareas y estado):\n${contextStr}\n\nUsa esta información para dar respuestas precisas sobre lo que el usuario tiene pendiente o completado.`;
+    }
+
+    if (userState?.onboardingComplete && userState.profileSummary) {
+      currentSystemPrompt += `\n\nPERFIL DECLARADO POR EL USUARIO (conectado al backend):\n${userState.profileSummary}\n\nRespuesta a \"¿Steeb necesita ser salvado?\": ${userState.rescueAnswer || 'sin definir'}. Usa este contexto para personalizar todas las respuestas futuras.`;
     }
 
     const emotion = getSteebEmotion(message, context);
@@ -208,6 +235,35 @@ export default async function handler(req, res) {
 
     // Enviar emoción detectada antes del contenido para que el frontend pueda cambiar el avatar
     res.write(`data: ${JSON.stringify({ emotion })}\n\n`);
+
+    if (!userState.onboardingRequested) {
+      const backendContext = context ? JSON.stringify(context).slice(0, 400) : 'sin datos visibles aún';
+      const onboardingPrompt = `Antes de seguir quiero conectarme con vos y lo que veo en backend (${backendContext}). Contame en un solo mensaje: 1) ¿A qué te dedicás? 2) ¿Qué estás buscando lograr con Steeb? 3) ¿Cuál es tu visión de vos a futuro? 4) ¿Steeb necesita ser salvado? (sí/no). Así puedo ayudarte mejor.`;
+      userState.onboardingRequested = true;
+      userStore.set(userId, userState);
+
+      res.write(`data: ${JSON.stringify({ chunk: onboardingPrompt })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
+    if (userState.onboardingRequested && !userState.onboardingComplete) {
+      const rescueAnswer = detectRescueIntent(message);
+      userState.onboardingComplete = true;
+      userState.profileSummary = message.trim();
+      userState.rescueAnswer = rescueAnswer;
+      userStore.set(userId, userState);
+
+      const rescueFollowUp = rescueAnswer === 'yes'
+        ? 'Entendido, me pediste que te salve y ya tengo tu contexto guardado. Vamos a levantarte como un crack. 😎'
+        : 'Quedó guardado tu contexto aunque digas que no necesitás ser salvado; igual te voy a empujar y, si insistís en negarlo, te voy a insultar por cobarde.';
+
+      res.write(`data: ${JSON.stringify({ chunk: rescueFollowUp })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
 
     if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'sk-deepseek-api-key-aqui') {
       // Modo Simulación si no hay API Key
