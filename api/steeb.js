@@ -240,7 +240,7 @@ export default async function handler(req, res) {
 
     if (ENABLE_ONBOARDING_PROMPT && !userState.onboardingRequested) {
       const backendContext = context ? JSON.stringify(context).slice(0, 400) : 'sin datos visibles aún';
-      const onboardingPrompt = `Antes de seguir quiero conectarme con vos y lo que veo en backend (${backendContext}). Contame en un solo mensaje: 1) ¿A qué te dedicás? 2) ¿Qué estás buscando lograr con Steeb? 3) ¿Cuál es tu visión de vos a futuro? 4) ¿Steeb necesita ser salvado? (sí/no). Así puedo ayudarte mejor.`;
+      const onboardingPrompt = `Contame en un solo mensaje: 1) ¿A qué te dedicás? 2) ¿Qué estás buscando lograr con Steeb? 3) ¿Cuál es tu visión de vos a futuro? 4) ¿Steeb necesita ser salvado? (sí/no).`;
       userState.onboardingRequested = true;
       userStore.set(userId, userState);
 
