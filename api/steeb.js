@@ -20,7 +20,8 @@ const ensureUserState = (userId) => {
       onboardingRequested: false,
       onboardingComplete: false,
       profileSummary: '',
-      rescueAnswer: null
+      rescueAnswer: null,
+      planningPromptSent: false
     });
   }
   return userStore.get(userId);
@@ -260,6 +261,22 @@ export default async function handler(req, res) {
         : 'Quedó guardado tu contexto aunque digas que no necesitás ser salvado; igual te voy a empujar y, si insistís en negarlo, te voy a insultar por cobarde.';
 
       res.write(`data: ${JSON.stringify({ chunk: rescueFollowUp })}\n\n`);
+
+      if (!userState.planningPromptSent) {
+        const planningActions = [
+          { type: 'OPEN_CALENDAR', payload: { plan: [] } },
+          { type: 'OPEN_TASKS', payload: {} }
+        ];
+
+        const planningPrompt = 'Ahora organicemos tu día con STEEB. Abrí tu agenda para meter tareas y horarios ya mismo.'
+          + `\n\n:::ACTIONS:::\n${JSON.stringify(planningActions)}`;
+
+        userState.planningPromptSent = true;
+        userStore.set(userId, userState);
+
+        res.write(`data: ${JSON.stringify({ chunk: planningPrompt })}\n\n`);
+      }
+
       res.write('data: [DONE]\n\n');
       res.end();
       return;
