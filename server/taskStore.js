@@ -218,6 +218,12 @@ export const createTaskStore = () => {
 
   return {
     createTask(payload, updatedBy) {
+      const hasScheduledTime =
+        payload.scheduled_time !== undefined &&
+        payload.scheduled_time !== null &&
+        payload.scheduled_time !== '';
+      const scheduledWithTime = payload.scheduled_with_time ?? hasScheduledTime;
+
       const newTask = {
         task_id: payload.task_id || crypto.randomUUID(),
         parent_task_id: payload.parent_task_id || null,
@@ -233,7 +239,7 @@ export const createTaskStore = () => {
         type: payload.type || null,
         scheduled_date: payload.scheduled_date || null,
         scheduled_time: payload.scheduled_time || null,
-        scheduled_with_time: payload.scheduled_with_time ?? false,
+        scheduled_with_time: scheduledWithTime,
         next_schedule_time: payload.next_schedule_time || null,
         timezone: payload.timezone || null,
         schedule_log: normalizeScheduleLog(payload.schedule_log),
@@ -253,11 +259,17 @@ export const createTaskStore = () => {
         throw new Error('Task not found');
       }
 
+      const normalizedUpdates = { ...updates };
+
+      if (normalizedUpdates.scheduled_time !== undefined && normalizedUpdates.scheduled_with_time === undefined) {
+        normalizedUpdates.scheduled_with_time = Boolean(normalizedUpdates.scheduled_time);
+      }
+
       const updatedTask = { ...tasks[index] };
 
-      if (updates.status === 'done') {
+      if (normalizedUpdates.status === 'done') {
         const children = tasks.filter((task) => task.parent_task_id === taskId);
-        const qaApproved = updates.qa?.approved ?? updatedTask.qa?.approved;
+        const qaApproved = normalizedUpdates.qa?.approved ?? updatedTask.qa?.approved;
         const allChildrenDone = children.every((child) => child.status === 'done' && (child.qa?.approved || false));
 
         if (children.length && (!allChildrenDone || !qaApproved)) {
@@ -269,14 +281,16 @@ export const createTaskStore = () => {
         }
       }
 
-      updatedTask.title = updates.title?.trim() || updatedTask.title;
-      updatedTask.description = updates.description ?? updatedTask.description;
-      updatedTask.owner = updates.owner ?? updatedTask.owner;
-      updatedTask.estimate = updates.estimate ?? updatedTask.estimate;
-      updatedTask.status = updates.status || updatedTask.status;
-      updatedTask.dependencies = Array.isArray(updates.dependencies) ? updates.dependencies : updatedTask.dependencies;
-      updatedTask.labels = Array.isArray(updates.labels) ? updates.labels : updatedTask.labels;
-      updatedTask.type = updates.type ?? updatedTask.type;
+      updatedTask.title = normalizedUpdates.title?.trim() || updatedTask.title;
+      updatedTask.description = normalizedUpdates.description ?? updatedTask.description;
+      updatedTask.owner = normalizedUpdates.owner ?? updatedTask.owner;
+      updatedTask.estimate = normalizedUpdates.estimate ?? updatedTask.estimate;
+      updatedTask.status = normalizedUpdates.status || updatedTask.status;
+      updatedTask.dependencies = Array.isArray(normalizedUpdates.dependencies)
+        ? normalizedUpdates.dependencies
+        : updatedTask.dependencies;
+      updatedTask.labels = Array.isArray(normalizedUpdates.labels) ? normalizedUpdates.labels : updatedTask.labels;
+      updatedTask.type = normalizedUpdates.type ?? updatedTask.type;
 
       const scheduleFields = [
         'scheduled_date',
@@ -290,14 +304,14 @@ export const createTaskStore = () => {
       let scheduleChanged = false;
 
       scheduleFields.forEach((field) => {
-        if (updates[field] !== undefined) {
-          updatedTask[field] = updates[field];
-          scheduleChanged = scheduleChanged || updates[field] !== scheduleBefore[field];
+        if (normalizedUpdates[field] !== undefined) {
+          updatedTask[field] = normalizedUpdates[field];
+          scheduleChanged = scheduleChanged || normalizedUpdates[field] !== scheduleBefore[field];
         }
       });
 
-      if (Array.isArray(updates.schedule_log)) {
-        updatedTask.schedule_log = normalizeScheduleLog(updates.schedule_log);
+      if (Array.isArray(normalizedUpdates.schedule_log)) {
+        updatedTask.schedule_log = normalizeScheduleLog(normalizedUpdates.schedule_log);
       }
 
       if (scheduleChanged) {
@@ -307,32 +321,32 @@ export const createTaskStore = () => {
             type: 'schedule_update',
             from: scheduleBefore,
             to: scheduleFields.reduce((acc, field) => ({ ...acc, [field]: updatedTask[field] ?? null }), {}),
-            updated_by: updatedBy || updates.updated_by || updatedTask.audit?.updated_by || null,
+            updated_by: updatedBy || normalizedUpdates.updated_by || updatedTask.audit?.updated_by || null,
             at: new Date().toISOString()
           }
         ]);
       }
 
-      if (updates.acceptance_criteria) {
-        updatedTask.acceptance_criteria = normalizeAcceptanceCriteria(updates.acceptance_criteria);
+      if (normalizedUpdates.acceptance_criteria) {
+        updatedTask.acceptance_criteria = normalizeAcceptanceCriteria(normalizedUpdates.acceptance_criteria);
       }
 
-      if (updates.checklist) {
-        updatedTask.checklist = normalizeChecklist(updates.checklist);
+      if (normalizedUpdates.checklist) {
+        updatedTask.checklist = normalizeChecklist(normalizedUpdates.checklist);
       }
 
       updatedTask.qa = {
-        approved: updates.qa?.approved ?? updatedTask.qa?.approved ?? false,
-        evidence: updates.qa?.evidence ?? updatedTask.qa?.evidence ?? [],
-        notes: updates.qa?.notes ?? updatedTask.qa?.notes ?? null,
-        qa_user: updates.qa?.qa_user ?? updatedTask.qa?.qa_user ?? null,
-        qa_at: updates.qa?.qa_at ?? updatedTask.qa?.qa_at ?? null
+        approved: normalizedUpdates.qa?.approved ?? updatedTask.qa?.approved ?? false,
+        evidence: normalizedUpdates.qa?.evidence ?? updatedTask.qa?.evidence ?? [],
+        notes: normalizedUpdates.qa?.notes ?? updatedTask.qa?.notes ?? null,
+        qa_user: normalizedUpdates.qa?.qa_user ?? updatedTask.qa?.qa_user ?? null,
+        qa_at: normalizedUpdates.qa?.qa_at ?? updatedTask.qa?.qa_at ?? null
       };
 
       updatedTask.audit = {
-        ...(updatedTask.audit || defaultAudit(updatedBy)),
+        ...(updatedTask.audit || defaultAudit(updatedBy || normalizedUpdates.updated_by)),
         updated_at: new Date().toISOString(),
-        updated_by: updatedBy || updates.updated_by || updatedTask.audit?.updated_by
+        updated_by: updatedBy || normalizedUpdates.updated_by || updatedTask.audit?.updated_by
       };
 
       const updatedList = [...tasks];
