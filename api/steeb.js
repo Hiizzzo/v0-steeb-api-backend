@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { getSteebEmotion } from '../lib/steebEmotions.js';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
@@ -198,10 +199,15 @@ export default async function handler(req, res) {
       currentSystemPrompt += `\n\nCONTEXTO ACTUAL DEL USUARIO (Tareas y estado):\n${contextStr}\n\nUsa esta información para dar respuestas precisas sobre lo que el usuario tiene pendiente o completado.`;
     }
 
+    const emotion = getSteebEmotion(message, context);
+
     // Configurar headers para SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+
+    // Enviar emoción detectada antes del contenido para que el frontend pueda cambiar el avatar
+    res.write(`data: ${JSON.stringify({ emotion })}\n\n`);
 
     if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'sk-deepseek-api-key-aqui') {
       // Modo Simulación si no hay API Key
