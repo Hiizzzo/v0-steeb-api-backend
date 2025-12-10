@@ -257,9 +257,9 @@ app.get('/api/tasks/:taskId', (req, res) => {
 // WEB PUSH ENDPOINTS
 // ================================
 
-app.get('/api/push/config', (req, res) => {
+app.get('/api/push/config', async (req, res) => {
   try {
-    const config = getPublicPushConfig();
+    const config = await getPublicPushConfig();
     res.json({ success: true, ...config });
   } catch (error) {
     console.error('Error obteniendo configuracion push:', error);
@@ -269,7 +269,7 @@ app.get('/api/push/config', (req, res) => {
 
 app.post('/api/push/subscribe', async (req, res) => {
   try {
-    if (!pushIsConfigured()) {
+    if (!(await pushIsConfigured())) {
       return res.status(503).json({ error: 'Web Push no configurado en el backend' });
     }
 
